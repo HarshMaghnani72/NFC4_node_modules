@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,6 +16,7 @@ export const Login = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { toast } = useToast();
 
   const baseUrl = "https://33edacd35f73.ngrok-free.app";
 
@@ -28,13 +30,25 @@ export const Login = () => {
 
       const token = response.data.token;
       login(token);
-      console.log("Logged in, token saved:", token);
+
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+        variant: "default",
+      });
+
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Login error:", err.response?.data || err.message);
-      setError(
-        err.response?.data?.message || "Login failed. Please try again."
-      );
+      const message =
+        err.response?.data?.message || "Login failed. Please try again.";
+      setError(message);
+
+      toast({
+        title: "Login Failed",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 

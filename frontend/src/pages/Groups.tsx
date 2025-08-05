@@ -3,11 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Users, 
-  Clock, 
+import {
+  Users,
+  Clock,
   Star,
   Search,
   Filter,
@@ -15,19 +21,65 @@ import {
   Calendar,
   Brain,
   UserPlus,
-  Eye
+  Eye,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import axios from "axios";
 
 export const Groups = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  
+  const [groupName, setGroupName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [maxMembers, setMaxMembers] = useState("");
+  const [learningStyle, setLearningStyle] = useState("");
+
+  const handleCreateGroup = async () => {
+    try {
+      const payload = {
+        name: groupName,
+        subject,
+        description,
+        maxMembers: parseInt(maxMembers),
+        learningStyle: learningStyle,
+      };
+
+      const response = await fetch(
+        "https://33edacd35f73.ngrok-free.app/group/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            credentials: "include",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      console.log("Group created:", response);
+      alert("Group created successfully!");
+
+      setGroupName("");
+      setSubject("");
+      setDescription("");
+      setMaxMembers("");
+      setLearningStyle("");
+    } catch (error: any) {
+      console.error(
+        "Error creating group:",
+        error?.response?.data || error.message
+      );
+      alert("Failed to create group.");
+    }
+  };
+
   const recommendedGroups = [
     {
       id: 1,
       name: "Linear Algebra Warriors",
       subject: "Mathematics",
-      description: "Conquering matrices and vector spaces together. Perfect for intermediate level students.",
+      description:
+        "Conquering matrices and vector spaces together. Perfect for intermediate level students.",
       members: 4,
       maxMembers: 6,
       rating: 4.8,
@@ -35,13 +87,14 @@ export const Groups = () => {
       timeSlot: "2:00-4:00 PM",
       days: ["Mon", "Wed", "Fri"],
       matchScore: 95,
-      tags: ["Peer Learning", "Practice Problems", "Group Study"]
+      tags: ["Peer Learning", "Practice Problems", "Group Study"],
     },
     {
       id: 2,
       name: "Quantum Mechanics Study Circle",
       subject: "Physics",
-      description: "Diving deep into quantum phenomena and mathematical formulations.",
+      description:
+        "Diving deep into quantum phenomena and mathematical formulations.",
       members: 3,
       maxMembers: 5,
       rating: 4.9,
@@ -49,13 +102,14 @@ export const Groups = () => {
       timeSlot: "6:00-8:00 PM",
       days: ["Tue", "Thu"],
       matchScore: 88,
-      tags: ["Advanced Level", "Problem Solving", "Theory Focus"]
+      tags: ["Advanced Level", "Problem Solving", "Theory Focus"],
     },
     {
       id: 3,
       name: "Organic Chemistry Lab Partners",
       subject: "Chemistry",
-      description: "Practice reactions, mechanisms, and lab techniques together.",
+      description:
+        "Practice reactions, mechanisms, and lab techniques together.",
       members: 5,
       maxMembers: 8,
       rating: 4.7,
@@ -63,8 +117,8 @@ export const Groups = () => {
       timeSlot: "10:00-12:00 PM",
       days: ["Mon", "Wed"],
       matchScore: 82,
-      tags: ["Lab Work", "Hands-on", "Collaborative"]
-    }
+      tags: ["Lab Work", "Hands-on", "Collaborative"],
+    },
   ];
 
   const allGroups = [
@@ -81,7 +135,7 @@ export const Groups = () => {
       timeSlot: "5:00-6:30 PM",
       days: ["Daily"],
       matchScore: 75,
-      tags: ["Conversation", "Cultural Exchange", "Beginner Friendly"]
+      tags: ["Conversation", "Cultural Exchange", "Beginner Friendly"],
     },
     {
       id: 5,
@@ -95,22 +149,35 @@ export const Groups = () => {
       timeSlot: "7:00-9:00 PM",
       days: ["Tue", "Thu", "Sat"],
       matchScore: 90,
-      tags: ["Coding", "Problem Solving", "Interview Prep"]
-    }
+      tags: ["Coding", "Problem Solving", "Interview Prep"],
+    },
   ];
 
-  const filteredGroups = allGroups.filter(group =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.subject.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGroups = allGroups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const GroupCard = ({ group, isRecommended = false }: { group: any, isRecommended?: boolean }) => (
-    <Card className={`hover:shadow-lg transition-shadow ${isRecommended ? 'ring-2 ring-primary/20' : ''}`}>
+  const GroupCard = ({
+    group,
+    isRecommended = false,
+  }: {
+    group: any;
+    isRecommended?: boolean;
+  }) => (
+    <Card
+      className={`hover:shadow-lg transition-shadow ${
+        isRecommended ? "ring-2 ring-primary/20" : ""
+      }`}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-foreground text-lg">{group.name}</h3>
+              <h3 className="font-semibold text-foreground text-lg">
+                {group.name}
+              </h3>
               {isRecommended && (
                 <Badge className="bg-primary/10 text-primary border-primary/20">
                   <Brain className="w-3 h-3 mr-1" />
@@ -118,8 +185,12 @@ export const Groups = () => {
                 </Badge>
               )}
             </div>
-            <Badge variant="secondary" className="mb-2">{group.subject}</Badge>
-            <p className="text-muted-foreground text-sm mb-3">{group.description}</p>
+            <Badge variant="secondary" className="mb-2">
+              {group.subject}
+            </Badge>
+            <p className="text-muted-foreground text-sm mb-3">
+              {group.description}
+            </p>
           </div>
         </div>
 
@@ -168,7 +239,7 @@ export const Groups = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -231,15 +302,18 @@ export const Groups = () => {
             <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg p-6 mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Brain className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">AI-Powered Recommendations</h2>
+                <h2 className="text-xl font-semibold text-foreground">
+                  AI-Powered Recommendations
+                </h2>
               </div>
               <p className="text-muted-foreground">
-                Based on your learning style, subjects, and schedule, here are the best matching study groups for you.
+                Based on your learning style, subjects, and schedule, here are
+                the best matching study groups for you.
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendedGroups.map(group => (
+              {recommendedGroups.map((group) => (
                 <GroupCard key={group.id} group={group} isRecommended />
               ))}
             </div>
@@ -247,7 +321,7 @@ export const Groups = () => {
 
           <TabsContent value="all" className="space-y-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredGroups.map(group => (
+              {filteredGroups.map((group) => (
                 <GroupCard key={group.id} group={group} />
               ))}
             </div>
@@ -261,11 +335,15 @@ export const Groups = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Group Name</label>
-                  <Input placeholder="Enter a catchy group name" />
+                  <Input
+                    placeholder="Enter a catchy group name"
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Subject</label>
-                  <Select>
+                  <Select onValueChange={setSubject}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select primary subject" />
                     </SelectTrigger>
@@ -273,18 +351,24 @@ export const Groups = () => {
                       <SelectItem value="mathematics">Mathematics</SelectItem>
                       <SelectItem value="physics">Physics</SelectItem>
                       <SelectItem value="chemistry">Chemistry</SelectItem>
-                      <SelectItem value="computer-science">Computer Science</SelectItem>
+                      <SelectItem value="computer-science">
+                        Computer Science
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Description</label>
-                  <Input placeholder="Describe your group's focus and goals" />
+                  <Input
+                    placeholder="Describe your group's focus and goals"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Max Members</label>
-                    <Select>
+                    <Select onValueChange={setMaxMembers}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select size" />
                       </SelectTrigger>
@@ -297,8 +381,10 @@ export const Groups = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Learning Style</label>
-                    <Select>
+                    <label className="text-sm font-medium">
+                      Learning Style
+                    </label>
+                    <Select onValueChange={setLearningStyle}>
                       <SelectTrigger>
                         <SelectValue placeholder="Primary style" />
                       </SelectTrigger>
@@ -311,7 +397,9 @@ export const Groups = () => {
                     </Select>
                   </div>
                 </div>
-                <Button className="w-full">Create Study Group</Button>
+                <Button className="w-full" onClick={handleCreateGroup}>
+                  Create Study Group
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
