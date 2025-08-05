@@ -29,7 +29,13 @@ app.use(
     credentials: true,
   })
 );
-
+server.on('error', (error) => {
+  console.error('HTTP server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error('Port 8000 is in use. Please free the port or use a different one.');
+    process.exit(1);
+  }
+});
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your-secret-key",

@@ -280,14 +280,17 @@ exports.getGroupSuccessMetrics = async (req, res) => {
 exports.getMyGroups = async (req, res) => {
   try {
     const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized: Please log in' });
+    }
+
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     const groups = await Group.find({ 
-      $or: [
-        { members: userId },
-        { pendingInvites: userId }
-      ]
+      $or: [{ members: userId }, { pendingInvites: userId }]
     }).populate('members', 'name email xp');
 
     const formattedGroups = groups.map(group => ({
@@ -310,7 +313,13 @@ exports.getMyGroups = async (req, res) => {
       recommendedResources: group.recommendedResources
     }));
 
-    await agenticAI.generateStudyPlan(userId); // Generate/update study plan on access
+    try {
+      await agenticAI.generateStudyPlan(userId);
+    } catch (studyPlanError) {
+      console.error('Study plan generation failed:', studyPlanError.message);
+      // Continue without failing the request
+    }
+
     res.json(formattedGroups);
   } catch (error) {
     console.error('Error in getMyGroups:', error);

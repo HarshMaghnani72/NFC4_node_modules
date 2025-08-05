@@ -4,9 +4,9 @@ const { sendMessage, getMessages, getFile, uploadFile } = require('../handlers/c
 const fileUpload = require('express-fileupload');
 
 router.use(fileUpload());
-router.post('/send', sendMessage);
-router.get('/:groupId', getMessages);
+router.post('/:groupId/message', sendMessage);
+router.get('/:groupId/messages', getMessages);
 router.get('/file/:fileId', getFile);
-router.post('/upload', uploadFile);
+router.post('/:groupId/upload', uploadFile);
 
 module.exports = router;
