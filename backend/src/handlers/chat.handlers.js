@@ -9,7 +9,7 @@ exports.sendMessage = async (req, res) => {
     try {
         const { groupId, content, file } = req.body;
         let encryptedContent = content;
-        let fileUrl = null; // Default to null if no file is provided
+        let fileUrl = null;
 
         if (content) {
             const iv = crypto.randomBytes(IV_LENGTH);
@@ -19,7 +19,7 @@ exports.sendMessage = async (req, res) => {
         }
 
         if (file) {
-            fileUrl = file; // Only assign fileUrl if file is provided
+            fileUrl = file;
         }
 
         const message = new Message({
@@ -29,10 +29,33 @@ exports.sendMessage = async (req, res) => {
             file: fileUrl
         });
         await message.save();
-        await require('./notification.handlers').sendNotification(
-            (await require('../models/group.model').findById(groupId)).members,
-            `New message in group`
-        );
+
+        // Fetch group members
+        const group = await require('../models/group.model').findById(groupId);
+        const notificationHandler = require('./notification.handlers');
+        await notificationHandler.sendNotification(group.members, `New message in group`);
+
+        // Broadcast message to WebSocket clients in the group
+        const wss = require('./websocket.handler').getWebSocketServer();
+        const decryptedContent = content || ''; // For broadcasting, use original content
+        const sender = await require('../models/user.model').findById(req.session.userId);
+        const messageData = {
+            id: message._id,
+            groupId,
+            sender: sender.name,
+            content: decryptedContent,
+            file: fileUrl,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: 'text'
+        };
+
+        // Broadcast to all connected clients in the group
+        wss.clients.forEach(client => {
+            if (client.isAlive && client.groups.includes(groupId)) {
+                client.send(JSON.stringify({ type: 'message', data: messageData }));
+            }
+        });
+
         res.status(201).json({ message: 'Message sent' });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -52,7 +75,15 @@ exports.getMessages = async (req, res) => {
                 decryptedContent = Buffer.concat([decipher.update(Buffer.from(encrypted, 'hex')), decipher.final()]).toString();
             }
 
-            return { ...msg._doc, content: decryptedContent, file: fileUrl };
+            return {
+                id: msg._id,
+                groupId: msg.groupId,
+                sender: msg.senderId.name,
+                content: decryptedContent,
+                file: fileUrl,
+                time: msg.createdAt,
+                type: 'text'
+            };
         });
 
         res.json(decryptedMessages);
@@ -74,7 +105,7 @@ exports.getFile = async (req, res) => {
 exports.uploadFile = async (req, res) => {
     try {
         const { groupId } = req.body;
-        const file = req.files?.file; // Assuming multipart/form-data with 'file' field
+        const file = req.files?.file;
         if (!file) return res.status(400).json({ error: 'No file provided' });
         const fileId = await uploadFile(file.data, groupId);
         res.json({ message: 'File uploaded successfully', fileId });

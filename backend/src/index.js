@@ -14,7 +14,11 @@ const chatRouter = require('./routes/chat.routes');
 const progressRouter = require('./routes/progress.routes');
 const notificationRouter = require('./routes/notification.routes');
 const virtualRoomRouter = require('./routes/virtualroom.routes');
+const { setupWebSocketServer } = require('./handlers/websocket_handler');
+const http = require('http');
+
 const app = express();
+const server = http.createServer(app);
 
 // Middleware
 app.use(express.json());
@@ -49,6 +53,7 @@ app.use('/chat', chatRouter);
 app.use('/progress', progressRouter);
 app.use('/virtualroom', virtualRoomRouter);
 app.use('/notification', notificationRouter);
+setupWebSocketServer(server);
 
 
 // Basic error handling middleware
