@@ -36,7 +36,7 @@ export const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('http://localhost:8000/user/profile', {
+        const response = await fetch('https://31401729b953.ngrok-free.app/user/profile', {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

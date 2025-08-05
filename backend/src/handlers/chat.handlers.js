@@ -9,13 +9,17 @@ exports.sendMessage = async (req, res) => {
     try {
         const { groupId, content, file } = req.body;
         let encryptedContent = content;
-        let fileUrl = file;
+        let fileUrl = null; // Default to null if no file is provided
 
         if (content) {
             const iv = crypto.randomBytes(IV_LENGTH);
             const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
             encryptedContent = Buffer.concat([cipher.update(content), cipher.final()]).toString('hex');
             encryptedContent = iv.toString('hex') + ':' + encryptedContent;
+        }
+
+        if (file) {
+            fileUrl = file; // Only assign fileUrl if file is provided
         }
 
         const message = new Message({

@@ -12,8 +12,8 @@ const groupRouter = require('./routes/group.routes');
 const scheduleRouter = require('./routes/schedule.routes');
 const chatRouter = require('./routes/chat.routes');
 const progressRouter = require('./routes/progress.routes');
+const notificationRouter = require('./routes/notification.routes');
 const virtualRoomRouter = require('./routes/virtualroom.routes');
-
 const app = express();
 
 // Middleware
@@ -32,7 +32,8 @@ app.use(session({
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
     cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
+        samesite:'none',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
@@ -45,6 +46,8 @@ app.use('/schedule', scheduleRouter);
 app.use('/chat', chatRouter);
 app.use('/progress', progressRouter);
 app.use('/virtualroom', virtualRoomRouter);
+app.use('/notification', notificationRouter);
+
 
 // Basic error handling middleware
 app.use((err, req, res, next) => {

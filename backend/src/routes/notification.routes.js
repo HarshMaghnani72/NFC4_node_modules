@@ -1,8 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { getNotifications, markNotificationRead } = require('../handlers/notification.handlers');
+const {
+    getNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification
+} = require('../handlers/notification.handlers');
 
+// GET notifications (with optional read query param)
 router.get('/', getNotifications);
-router.put('/read', markNotificationRead);
+
+// PUT single notification as read
+router.put('/read', markNotificationAsRead);
+
+// PUT all notifications as read
+router.put('/read/all', markAllNotificationsAsRead);
+
+// DELETE a notification
+router.delete('/', deleteNotification);
 
 module.exports = router;
