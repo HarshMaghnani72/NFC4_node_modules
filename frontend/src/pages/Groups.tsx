@@ -57,7 +57,7 @@ export const Groups = () => {
       };
 
       const response = await fetch(
-        "https://d7586fcb9ca8.ngrok-free.app/group/create",
+        "https://d6fdd0f8061f.ngrok-free.app/group/create",
         {
           method: "POST",
           headers: {

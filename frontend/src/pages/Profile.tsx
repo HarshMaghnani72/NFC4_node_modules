@@ -36,13 +36,16 @@ export const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('http://localhost:8000/user/profile', {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", 
-        });
+        const response = await fetch(
+          "https://d6fdd0f8061f.ngrok-free.app/user/profile",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch profile");
@@ -85,7 +88,11 @@ export const Profile = () => {
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <p className="text-destructive">Error: {error}</p>
-          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
             Retry
           </Button>
         </div>
@@ -123,19 +130,25 @@ export const Profile = () => {
                 <div className="flex items-center space-x-3">
                   <User className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Name</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Name
+                    </p>
                     <p className="text-foreground">{user.name}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <BookOpen className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Institute</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Institute
+                    </p>
                     <p className="text-foreground">{user.institute}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <p className="text-sm font-medium text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Email
+                  </p>
                   <p className="text-foreground">{user.email}</p>
                 </div>
               </CardContent>
@@ -148,7 +161,9 @@ export const Profile = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Subjects</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Subjects
+                  </p>
                   <div className="flex gap-2 mt-1">
                     {user.subjects.map((subject, index) => (
                       <Badge key={index} variant="secondary">
@@ -158,16 +173,24 @@ export const Profile = () => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Language</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Language
+                  </p>
                   <p className="text-foreground">{user.language}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Learning Style</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Learning Style
+                  </p>
                   <p className="text-foreground">{user.learningStyle}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Accept Group Invites</p>
-                  <p className="text-foreground">{user.acceptInvites ? "Yes" : "No"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Accept Group Invites
+                  </p>
+                  <p className="text-foreground">
+                    {user.acceptInvites ? "Yes" : "No"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -181,9 +204,12 @@ export const Profile = () => {
                 <div className="flex items-center space-x-3">
                   <Calendar className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Available</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Available
+                    </p>
                     <p className="text-foreground">
-                      {formatTime(user.availability.start)} - {formatTime(user.availability.end)}
+                      {formatTime(user.availability.start)} -{" "}
+                      {formatTime(user.availability.end)}
                     </p>
                   </div>
                 </div>
@@ -200,16 +226,26 @@ export const Profile = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground">XP Points</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    XP Points
+                  </p>
                   <p className="text-foreground font-semibold">{user.xp}</p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground">Study Hours</p>
-                  <p className="text-foreground font-semibold">{user.studyHours}h</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Study Hours
+                  </p>
+                  <p className="text-foreground font-semibold">
+                    {user.studyHours}h
+                  </p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground">Tasks Completed</p>
-                  <p className="text-foreground font-semibold">{user.tasksCompleted}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Tasks Completed
+                  </p>
+                  <p className="text-foreground font-semibold">
+                    {user.tasksCompleted}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -222,7 +258,10 @@ export const Profile = () => {
               <CardContent>
                 {user.badges.length > 0 ? (
                   user.badges.map((badge, index) => (
-                    <div key={index} className="flex items-center space-x-3 p-3 bg-accent/10 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center space-x-3 p-3 bg-accent/10 rounded-lg"
+                    >
                       <Star className="w-5 h-5 text-primary" />
                       <p className="text-foreground">{badge}</p>
                     </div>
@@ -245,7 +284,11 @@ export const Profile = () => {
                     Edit Profile
                   </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  asChild
+                >
                   <Link to="/groups">
                     <User className="w-4 h-4 mr-2" />
                     Find Study Groups
