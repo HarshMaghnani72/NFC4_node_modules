@@ -35,17 +35,29 @@ export const Groups = () => {
   const [learningStyle, setLearningStyle] = useState("");
 
   const handleCreateGroup = async () => {
+    if (
+      !groupName ||
+      !subject ||
+      !description ||
+      !maxMembers ||
+      !learningStyle
+    ) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
     try {
       const payload = {
-        name: groupName,
+        name: groupName.trim(),
         subject,
-        description,
+        description: description.trim(),
+        members: ["6891d86ce620d2f9b413146f"],
         maxMembers: parseInt(maxMembers),
-        learningStyle: learningStyle,
+        learningStyle,
       };
 
       const response = await fetch(
-        "https://33edacd35f73.ngrok-free.app/group/create",
+        "https://d7586fcb9ca8.ngrok-free.app/group/create",
         {
           method: "POST",
           headers: {
@@ -56,7 +68,13 @@ export const Groups = () => {
         }
       );
 
-      console.log("Group created:", response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create group.");
+      }
+
+      const data = await response.json();
+      console.log("Group created:", data);
       alert("Group created successfully!");
 
       setGroupName("");
@@ -64,12 +82,9 @@ export const Groups = () => {
       setDescription("");
       setMaxMembers("");
       setLearningStyle("");
-    } catch (error: any) {
-      console.error(
-        "Error creating group:",
-        error?.response?.data || error.message
-      );
-      alert("Failed to create group.");
+    } catch (error) {
+      console.error("Error creating group:", error.message);
+      alert(`Failed to create group: ${error.message}`);
     }
   };
 
@@ -279,10 +294,10 @@ export const Groups = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Styles</SelectItem>
-              <SelectItem value="visual">Visual</SelectItem>
-              <SelectItem value="auditory">Auditory</SelectItem>
-              <SelectItem value="kinesthetic">Kinesthetic</SelectItem>
-              <SelectItem value="mixed">Mixed</SelectItem>
+              <SelectItem value="Visual">Visual</SelectItem>
+              <SelectItem value="Auditory">Auditory</SelectItem>
+              <SelectItem value="Kinesthetic">Kinesthetic</SelectItem>
+              <SelectItem value="Mixed">Mixed</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline">
@@ -389,10 +404,10 @@ export const Groups = () => {
                         <SelectValue placeholder="Primary style" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="visual">Visual</SelectItem>
-                        <SelectItem value="auditory">Auditory</SelectItem>
-                        <SelectItem value="kinesthetic">Kinesthetic</SelectItem>
-                        <SelectItem value="mixed">Mixed</SelectItem>
+                        <SelectItem value="Visual">Visual</SelectItem>
+                        <SelectItem value="Auditory">Auditory</SelectItem>
+                        <SelectItem value="Kinesthetic">Kinesthetic</SelectItem>
+                        <SelectItem value="Mixed">Mixed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
