@@ -8,7 +8,7 @@ import { Navbar } from "@/components/Navbar";
 
 // Define TypeScript interface for user data
 interface User {
-  availability: {
+  availability?: {
     start: string;
     end: string;
   };
@@ -192,24 +192,36 @@ export const Profile = () => {
               </CardContent>
             </Card>
 
-            {/* Availability Card */}
+            {/* Availability Card - with null check */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Availability</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Available
-                    </p>
-                    <p className="text-foreground">
-                      {formatTime(user.availability.start)} -{" "}
-                      {formatTime(user.availability.end)}
-                    </p>
+                {user.availability ? (
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Available
+                      </p>
+                      <p className="text-foreground">
+                        {formatTime(user.availability.start)} -{" "}
+                        {formatTime(user.availability.end)}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Availability
+                      </p>
+                      <p className="text-muted-foreground">Not set</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

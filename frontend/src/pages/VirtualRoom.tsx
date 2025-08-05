@@ -217,28 +217,30 @@ export const VirtualRoom = () => {
     }
   };
 
-  const toggleFullScreen = () => {
-    const elem = whiteboardRef.current;
-    if (!isFullScreen) {
+const toggleFullScreen = () => {
+  const elem = whiteboardRef.current as HTMLElement | null;
+  if (!isFullScreen) {
+    if (elem) {
       if (elem.requestFullscreen) {
-        elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) {
-        elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) {
-        elem.msRequestFullscreen();
+        elem.requestFullscreen().catch((err) => console.error(err));
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen().catch((err: any) => console.error(err));
+      } else if ((elem as any).msRequestFullscreen) {
+        (elem as any).msRequestFullscreen().catch((err: any) => console.error(err));
       }
       setIsFullScreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-      }
-      setIsFullScreen(false);
     }
-  };
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch((err) => console.error(err));
+    } else if ((document as any).webkitExitFullscreen) {
+      (document as any).webkitExitFullscreen().catch((err: any) => console.error(err));
+    } else if ((document as any).msExitFullscreen) {
+      (document as any).msExitFullscreen().catch((err: any) => console.error(err));
+    }
+    setIsFullScreen(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-background">

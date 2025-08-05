@@ -26,7 +26,6 @@ app.use(
   })
 );
 
-// Session middleware for cookie-based authentication
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your-secret-key",
