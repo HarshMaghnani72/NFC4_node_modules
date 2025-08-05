@@ -14,24 +14,22 @@ export const Login = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    try {
-      await login(email, password); // Use login from AuthContext
-    } catch (err: any) {
-      console.error("Login error:", err.message);
-      setError(err.message || "Login failed. Please try again.");
-    }
-  };
-
-  // Navigate to dashboard when isAuthenticated becomes true
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("Login: isAuthenticated is true, navigating to /dashboard");
-      navigate("/dashboard", { replace: true });
+      console.log('Login: isAuthenticated is true, navigating to /dashboard');
+      navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await login(email, password);
+      navigate('/dashboard'); // Ensure navigation after login
+    } catch (error) {
+      console.error('Login error:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 flex items-center justify-center py-12">
