@@ -12,7 +12,7 @@ const groupRouter = require('./routes/group.routes');
 const scheduleRouter = require('./routes/schedule.routes');
 const chatRouter = require('./routes/chat.routes');
 const progressRouter = require('./routes/progress.routes');
-const virtualRoomRouter = require('./routes/virtualRoom.routes');
+const virtualRoomRouter = require('./routes/virtualroom.routes');
 
 const app = express();
 
@@ -20,7 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:8080',
+    origin: '*',
     credentials: true
 }));
 

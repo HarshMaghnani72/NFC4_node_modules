@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { updateSchedule, getSchedule, syncGoogleCalendar } = require('../controllers/schedule.controller');
+const { updateSchedule, getSchedule, syncGoogleCalendar } = require('../handlers/schedule.handlers');
 
 router.get('/', getSchedule);
 router.put('/', updateSchedule);

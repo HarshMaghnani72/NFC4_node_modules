@@ -1,5 +1,6 @@
+const express = require('express');
 const router = express.Router();
-const { updateProfile, getProfile, reportUser, togglePrivacy } = require('../controllers/user.controller');
+const { updateProfile, getProfile, reportUser, togglePrivacy } = require('../handlers/user.handlers');
 
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);

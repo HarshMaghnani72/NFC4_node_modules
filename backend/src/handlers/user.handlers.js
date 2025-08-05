@@ -1,4 +1,5 @@
 const User = require('../models/user.model');
+const Report = require('../models/report.model');
 
 exports.getProfile = async (req, res) => {
     try {
@@ -22,8 +23,14 @@ exports.updateProfile = async (req, res) => {
 
 exports.reportUser = async (req, res) => {
     try {
-        // Placeholder for reporting logic
-        res.json({ message: 'User reported' });
+        const { reportedUserId, reason } = req.body;
+        const report = new Report({
+            reporterId: req.session.userId,
+            reportedUserId,
+            reason
+        });
+        await report.save();
+        res.json({ message: 'User reported successfully' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
