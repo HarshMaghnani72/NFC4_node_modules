@@ -51,19 +51,18 @@ export const Groups = () => {
         name: groupName.trim(),
         subject,
         description: description.trim(),
-        members: ["6891d86ce620d2f9b413146f"],
         maxMembers: parseInt(maxMembers),
         learningStyle,
       };
 
       const response = await fetch(
-        "https://d6fdd0f8061f.ngrok-free.app/group/create",
+        "http://localhost:8000/group/create",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            credentials: "include",
           },
+          credentials:'include',
           body: JSON.stringify(payload),
         }
       );

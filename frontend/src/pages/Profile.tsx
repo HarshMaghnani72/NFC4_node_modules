@@ -36,16 +36,13 @@ export const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch(
-          "https://d6fdd0f8061f.ngrok-free.app/user/profile",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-          }
-        );
+        const response = await fetch('https://31401729b953.ngrok-free.app/user/profile', {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", 
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch profile");
