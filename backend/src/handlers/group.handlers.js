@@ -6,56 +6,86 @@ const { RandomForestClassifier } = require('ml-random-forest');
 exports.getMatches = async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Find groups where user is not a member
         const groups = await Group.find({
             subjects: { $in: user.subjects },
-            learningStyle: user.learningStyle
+            learningStyle: user.learningStyle,
+            members: { $nin: [req.session.userId] }
         }).populate('members', 'name xp studyHours tasksCompleted ratings');
 
-        // Prepare data for ML-based compatibility prediction
+        if (!groups || groups.length === 0) {
+            await User.findByIdAndUpdate(req.session.userId, {
+                $push: { matchHistory: { groups: [], timestamp: new Date(), scores: [] } }
+            });
+            return res.json([]);
+        }
+
         const trainingData = [];
         const labels = [];
         const userFeatures = [
-            user.subjects.length,
+            user.subjects.length || 0,
             user.learningStyle === 'Visual' ? 1 : user.learningStyle === 'Auditory' ? 2 : 3,
             user.studyHours || 0,
             user.tasksCompleted || 0,
             user.xp || 0,
-            (user.ratings.reduce((sum, r) => sum + r.score, 0) / (user.ratings.length || 1)) || 0
+            (user.ratings.length ? user.ratings.reduce((sum, r) => sum + r.score, 0) / user.ratings.length : 0)
         ];
 
         for (const group of groups) {
-            const avgMemberXP = group.members.reduce((sum, m) => sum + m.xp, 0) / group.members.length;
-            const avgStudyHours = group.members.reduce((sum, m) => sum + m.studyHours, 0) / group.members.length;
-            const avgRating = group.members.reduce((sum, m) => sum + (m.ratings.reduce((rSum, r) => rSum + r.score, 0) / (m.ratings.length || 1)), 0) / group.members.length;
+            const memberCount = group.members.length || 1;
+            const avgMemberXP = group.members.reduce((sum, m) => sum + (m.xp || 0), 0) / memberCount;
+            const avgStudyHours = group.members.reduce((sum, m) => sum + (m.studyHours || 0), 0) / memberCount;
+            const avgRating = group.members.reduce((sum, m) => {
+                const rating = m.ratings.length ? m.ratings.reduce((rSum, r) => rSum + r.score, 0) / m.ratings.length : 0;
+                return sum + rating;
+            }, 0) / memberCount;
             const commonSubjects = group.subjects.filter(s => user.subjects.includes(s)).length;
             const features = [
-                commonSubjects,
+                commonSubjects || 0,
                 group.learningStyle === user.learningStyle ? 1 : 0,
-                avgStudyHours,
-                group.members.length,
-                avgMemberXP,
-                avgRating
+                avgStudyHours || 0,
+                group.members.length || 0,
+                avgMemberXP || 0,
+                avgRating || 0
             ];
             trainingData.push(features);
             labels.push(group.members.length > 2 && avgMemberXP > 100 ? 1 : 0);
         }
 
-        // Train Random Forest model
-        const options = { seed: 42, maxFeatures: 0.8, replacement: true, nEstimators: 50 };
-        const classifier = new RandomForestClassifier(options);
-        classifier.train(trainingData, labels);
-        const predictions = classifier.predict(trainingData);
+        console.log('Training Data:', trainingData);
+        console.log('Labels:', labels);
+
+        let predictions = new Array(groups.length).fill(0);
+        if (trainingData.length >= 2 && trainingData.every(features => features.length === 6)) {
+            try {
+                const options = { seed: 42, maxFeatures: 0.8, replacement: true, nEstimators: 50 };
+                const classifier = new RandomForestClassifier(options);
+                classifier.train(trainingData, labels);
+                predictions = classifier.predict(trainingData);
+            } catch (error) {
+                console.warn('Random Forest training failed:', error.message);
+            }
+        } else {
+            console.warn('Skipping model training: insufficient samples or invalid data');
+        }
 
         const scoredGroups = groups.map((group, index) => {
             let compatibilityScore = 0;
             const commonSubjects = group.subjects.filter(s => user.subjects.includes(s)).length;
-            compatibilityScore += (commonSubjects / user.subjects.length) * 45; // Subjects: 45%
+            compatibilityScore += (commonSubjects / (user.subjects.length || 1)) * 45;
             if (group.learningStyle === user.learningStyle) {
-                compatibilityScore += 25; // Learning style: 25%
+                compatibilityScore += 25;
             }
-            const avgMemberXP = group.members.reduce((sum, m) => sum + m.xp, 0) / group.members.length;
-            compatibilityScore += (Math.min(avgMemberXP / (user.xp || 1), 1)) * 30; // Activity level: 30%
-            return { ...group._doc, compatibilityScore: Math.max(compatibilityScore, predictions[index] * 100) };
+            const avgMemberXP = group.members.length
+                ? group.members.reduce((sum, m) => sum + (m.xp || 0), 0) / group.members.length
+                : 0;
+            compatibilityScore += (Math.min(avgMemberXP / (user.xp || 1), 1)) * 30;
+            return {
+                ...group._doc,
+                compatibilityScore: Math.max(compatibilityScore, predictions[index] * 100)
+            };
         });
 
         scoredGroups.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
@@ -66,6 +96,7 @@ exports.getMatches = async (req, res) => {
 
         res.json(scoredGroups);
     } catch (error) {
+        console.error('Error in getMatches:', error);
         res.status(400).json({ error: error.message });
     }
 };
@@ -191,7 +222,7 @@ exports.autonomousGroupFormation = async (req, res) => {
                     name: `Auto-Group-${Date.now()}`,
                     subjects: representativeUser.subjects,
                     learningStyle: representativeUser.learningStyle,
-                    maxMembers: Math.min(cluster.length + 2, 10), // Dynamic maxMembers
+                    maxMembers: Math.min(cluster.length + 2, 10),
                     description: `Automatically formed group for ${representativeUser.subjects.join(', ')}`,
                     members: cluster,
                     pendingInvites: [],
@@ -232,6 +263,45 @@ exports.getGroupSuccessMetrics = async (req, res) => {
         }));
         res.json(metrics);
     } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
+
+exports.getMyGroups = async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const groups = await Group.find({ 
+            $or: [
+                { members: userId },
+                { pendingInvites: userId }
+            ]
+        }).populate('members', 'name email xp');
+
+        const formattedGroups = groups.map(group => ({
+            groupId: group._id,
+            name: group.name,
+            description: group.description,
+            subjects: group.subjects,
+            learningStyle: group.learningStyle,
+            memberCount: group.members.length,
+            maxMembers: group.maxMembers,
+            activityScore: group.activityScore,
+            isMember: group.members.some(member => member._id.toString() === userId),
+            isPending: group.pendingInvites.includes(userId),
+            members: group.members.map(member => ({
+                id: member._id,
+                name: member.name,
+                email: member.email,
+                xp: member.xp
+            }))
+        }));
+
+        res.json(formattedGroups);
+    } catch (error) {
+        console.error('Error in getMyGroups:', error);
         res.status(400).json({ error: error.message });
     }
 };

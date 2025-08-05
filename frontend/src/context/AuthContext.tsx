@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const response = await fetch('https://ce4a4944c167.ngrok-free.app/auth/login', {
+      const response = await fetch('http://localhost:8000/auth/login', {
         method: 'POST',
         credentials: 'include',
         headers: {
