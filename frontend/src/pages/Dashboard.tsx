@@ -25,16 +25,13 @@ export const Dashboard = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch(
-        "https://d6fdd0f8061f.ngrok-free.app/user/profile",
-        {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const res = await fetch("http://localhost:8000/user/profile", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!res.ok) throw new Error("Failed to fetch profile");
 
