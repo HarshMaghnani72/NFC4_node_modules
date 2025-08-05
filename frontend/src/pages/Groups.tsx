@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +17,11 @@ import {
   Star,
   Search,
   Filter,
-  MapPin,
-  Calendar,
   Brain,
   UserPlus,
   Eye,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import axios from "axios";
 
 export const Groups = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,14 +31,42 @@ export const Groups = () => {
   const [maxMembers, setMaxMembers] = useState("");
   const [learningStyle, setLearningStyle] = useState("");
 
+  function useUserGroups() {
+    const [groups, setGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      const fetchGroups = async () => {
+        try {
+          const response = await fetch("http://localhost:8000/group/my-groups", {
+            method: "GET",
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch groups");
+          }
+
+          const data = await response.json();
+          setGroups(data);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchGroups();
+    }, []);
+
+    return { groups, loading, error };
+  }
+
+  const { groups, loading, error } = useUserGroups();
+
   const handleCreateGroup = async () => {
-    if (
-      !groupName ||
-      !subject ||
-      !description ||
-      !maxMembers ||
-      !learningStyle
-    ) {
+    if (!groupName || !subject || !description || !maxMembers || !learningStyle) {
       alert("Please fill out all required fields.");
       return;
     }
@@ -55,17 +80,14 @@ export const Groups = () => {
         learningStyle,
       };
 
-      const response = await fetch(
-        "http://localhost:8000/group/create",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials:'include',
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch("http://localhost:8000/group/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -92,9 +114,8 @@ export const Groups = () => {
       id: 1,
       name: "Linear Algebra Warriors",
       subject: "Mathematics",
-      description:
-        "Conquering matrices and vector spaces together. Perfect for intermediate level students.",
-      members: 4,
+      description: "Conquering matrices and vector spaces together.",
+      memberCount: 4,
       maxMembers: 6,
       rating: 4.8,
       learningStyle: "Visual",
@@ -102,37 +123,9 @@ export const Groups = () => {
       days: ["Mon", "Wed", "Fri"],
       matchScore: 95,
       tags: ["Peer Learning", "Practice Problems", "Group Study"],
+      isMember: false,
     },
-    {
-      id: 2,
-      name: "Quantum Mechanics Study Circle",
-      subject: "Physics",
-      description:
-        "Diving deep into quantum phenomena and mathematical formulations.",
-      members: 3,
-      maxMembers: 5,
-      rating: 4.9,
-      learningStyle: "Mixed",
-      timeSlot: "6:00-8:00 PM",
-      days: ["Tue", "Thu"],
-      matchScore: 88,
-      tags: ["Advanced Level", "Problem Solving", "Theory Focus"],
-    },
-    {
-      id: 3,
-      name: "Organic Chemistry Lab Partners",
-      subject: "Chemistry",
-      description:
-        "Practice reactions, mechanisms, and lab techniques together.",
-      members: 5,
-      maxMembers: 8,
-      rating: 4.7,
-      learningStyle: "Kinesthetic",
-      timeSlot: "10:00-12:00 PM",
-      days: ["Mon", "Wed"],
-      matchScore: 82,
-      tags: ["Lab Work", "Hands-on", "Collaborative"],
-    },
+    // ... other recommended groups
   ];
 
   const allGroups = [
@@ -142,7 +135,7 @@ export const Groups = () => {
       name: "Spanish Conversation Club",
       subject: "Languages",
       description: "Practice Spanish conversation in a supportive environment.",
-      members: 6,
+      memberCount: 6,
       maxMembers: 10,
       rating: 4.6,
       learningStyle: "Auditory",
@@ -150,27 +143,23 @@ export const Groups = () => {
       days: ["Daily"],
       matchScore: 75,
       tags: ["Conversation", "Cultural Exchange", "Beginner Friendly"],
+      isMember: false,
     },
-    {
-      id: 5,
-      name: "Data Structures & Algorithms",
-      subject: "Computer Science",
-      description: "Solve coding challenges and master algorithms together.",
-      members: 7,
-      maxMembers: 12,
-      rating: 4.9,
-      learningStyle: "Visual",
-      timeSlot: "7:00-9:00 PM",
-      days: ["Tue", "Thu", "Sat"],
-      matchScore: 90,
-      tags: ["Coding", "Problem Solving", "Interview Prep"],
-    },
+    // ... other groups
   ];
 
   const filteredGroups = allGroups.filter(
     (group) =>
       group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       group.subject.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredMyGroups = groups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.subjects.some((subject) =>
+        subject.toLowerCase().includes(searchTerm.toLowerCase())
+      )
   );
 
   const GroupCard = ({
@@ -200,7 +189,7 @@ export const Groups = () => {
               )}
             </div>
             <Badge variant="secondary" className="mb-2">
-              {group.subject}
+              {Array.isArray(group.subjects) ? group.subjects.join(", ") || "No subjects" : group.subject}
             </Badge>
             <p className="text-muted-foreground text-sm mb-3">
               {group.description}
@@ -213,34 +202,42 @@ export const Groups = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center text-muted-foreground">
                 <Users className="w-4 h-4 mr-1" />
-                {group.members}/{group.maxMembers}
+                {group.memberCount}/{group.maxMembers}
               </div>
-              <div className="flex items-center text-muted-foreground">
-                <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
-                {group.rating}
-              </div>
+              {group.rating && (
+                <div className="flex items-center text-muted-foreground">
+                  <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
+                  {group.rating}
+                </div>
+              )}
             </div>
             <Badge variant="outline">{group.learningStyle}</Badge>
           </div>
 
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="w-4 h-4 mr-2" />
-            {group.timeSlot} • {group.days.join(", ")}
-          </div>
+          {group.timeSlot && group.days && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Clock className="w-4 h-4 mr-2" />
+              {group.timeSlot} • {group.days.join(", ")}
+            </div>
+          )}
 
-          <div className="flex flex-wrap gap-1">
-            {group.tags.map((tag: string, index: number) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
+          {group.tags && group.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {group.tags.map((tag: string, index: number) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
 
           <div className="flex gap-2 pt-2">
-            <Button className="flex-1">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Request to Join
-            </Button>
+            {!group.isMember && (
+              <Button className="flex-1">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Request to Join
+              </Button>
+            )}
             <Button variant="outline" size="icon">
               <Eye className="w-4 h-4" />
             </Button>
@@ -306,9 +303,10 @@ export const Groups = () => {
         </div>
 
         <Tabs defaultValue="recommended" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="recommended">AI Recommended</TabsTrigger>
             <TabsTrigger value="all">All Groups</TabsTrigger>
+            <TabsTrigger value="my-groups">My Groups</TabsTrigger>
             <TabsTrigger value="create">Create Group</TabsTrigger>
           </TabsList>
 
@@ -325,7 +323,6 @@ export const Groups = () => {
                 the best matching study groups for you.
               </p>
             </div>
-
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendedGroups.map((group) => (
                 <GroupCard key={group.id} group={group} isRecommended />
@@ -339,6 +336,21 @@ export const Groups = () => {
                 <GroupCard key={group.id} group={group} />
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="my-groups" className="space-y-6">
+            {loading && <p>Loading your groups...</p>}
+            {error && <p className="text-red-500">Error: {error}</p>}
+            {!loading && !error && filteredMyGroups.length === 0 && (
+              <p>No groups found. Join or create a group!</p>
+            )}
+            {!loading && !error && filteredMyGroups.length > 0 && (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredMyGroups.map((group) => (
+                  <GroupCard key={group.groupId} group={group} />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="create" className="space-y-6">

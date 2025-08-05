@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,15 @@ import {
   VideoIcon,
   Star,
   TrendingUp,
+  UserPlus,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "../context/AuthContext";
+
 export const Dashboard = () => {
   const [profile, setProfile] = useState(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const fetchUserProfile = async () => {
     try {
@@ -43,6 +46,66 @@ export const Dashboard = () => {
     }
   };
 
+  function useUserGroups() {
+    const [groups, setGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      const fetchGroups = async () => {
+        try {
+          const response = await fetch("http://localhost:8000/group/my-groups", {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch groups");
+          }
+
+          const data = await response.json();
+          setGroups(data);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchGroups();
+    }, []);
+
+    return { groups, loading, error };
+  }
+
+  const { groups, loading, error } = useUserGroups();
+
+  const handleViewDetails = async (groupId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/group/${groupId}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch group details");
+      }
+
+      const groupData = await response.json();
+      // Navigate to group details page with data
+      navigate(`/group/${groupId}`, { state: { group: groupData } });
+    } catch (error) {
+      console.error("Error fetching group details:", error.message);
+      alert(`Failed to fetch group details: ${error.message}`);
+    }
+  };
+
   useEffect(() => {
     const getProfile = async () => {
       const userData = await fetchUserProfile();
@@ -51,51 +114,6 @@ export const Dashboard = () => {
 
     getProfile();
   }, []);
-
-  const myGroups = [
-    {
-      id: 1,
-      name: "Advanced Calculus Masters",
-      subject: "Mathematics",
-      members: 4,
-      nextSession: "Today, 3:00 PM",
-      progress: 75,
-    },
-    {
-      id: 2,
-      name: "Quantum Physics Explorers",
-      subject: "Physics",
-      members: 5,
-      nextSession: "Tomorrow, 10:00 AM",
-      progress: 60,
-    },
-    {
-      id: 3,
-      name: "Organic Chemistry Lab",
-      subject: "Chemistry",
-      members: 3,
-      nextSession: "Friday, 2:00 PM",
-      progress: 40,
-    },
-  ];
-
-  const upcomingSessions = [
-    {
-      group: "Advanced Calculus Masters",
-      time: "Today, 3:00 PM",
-      type: "Study Session",
-    },
-    {
-      group: "Quantum Physics Explorers",
-      time: "Tomorrow, 10:00 AM",
-      type: "Practice Exam",
-    },
-    {
-      group: "Organic Chemistry Lab",
-      time: "Friday, 2:00 PM",
-      type: "Lab Review",
-    },
-  ];
 
   const achievements = [
     { name: "Study Streak", description: "7 days in a row!", icon: "🔥" },
@@ -114,10 +132,9 @@ export const Dashboard = () => {
               ? `Welcome back, ${profile.name || profile.email}!`
               : "Welcome back!"}
           </h1>
-
           <p className="text-muted-foreground">
-            Ready to continue your learning journey? You have 2 study sessions
-            today.
+            Ready to continue your learning journey? You have{" "}
+            {groups.length} study sessions today.
           </p>
         </div>
 
@@ -130,7 +147,9 @@ export const Dashboard = () => {
                   <p className="text-sm font-medium text-muted-foreground">
                     XP Points
                   </p>
-                  <p className="text-2xl font-bold text-foreground">2,847</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {profile?.xp || 0}
+                  </p>
                 </div>
                 <Trophy className="w-8 h-8 text-primary" />
               </div>
@@ -158,7 +177,9 @@ export const Dashboard = () => {
                   <p className="text-sm font-medium text-muted-foreground">
                     Active Groups
                   </p>
-                  <p className="text-2xl font-bold text-foreground">3</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {groups.length}
+                  </p>
                 </div>
                 <Users className="w-8 h-8 text-secondary" />
               </div>
@@ -200,86 +221,117 @@ export const Dashboard = () => {
                   </Button>
                 </div>
 
-                {myGroups.map((group) => (
-                  <Card
-                    key={group.id}
-                    className="hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold text-foreground mb-1">
-                            {group.name}
-                          </h3>
-                          <Badge variant="secondary">{group.subject}</Badge>
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Users className="w-4 h-4 mr-1" />
-                          {group.members} members
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="w-4 h-4 mr-2" />
-                          Next session: {group.nextSession}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Group Progress
-                            </span>
-                            <span className="font-medium">
-                              {group.progress}%
-                            </span>
+                {loading && <p>Loading your groups...</p>}
+                {error && <p className="text-red-500">Error: {error}</p>}
+                {!loading && !error && groups.length === 0 && (
+                  <p>No groups found. Join or create a group!</p>
+                )}
+                {!loading && !error && groups.length > 0 && (
+                  <>
+                    {groups.map((group) => (
+                      <Card
+                        key={group.groupId}
+                        className="hover:shadow-md transition-shadow"
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold text-foreground mb-1">
+                                {group.name}
+                              </h3>
+                              <Badge variant="secondary">
+                                {group.subjects.length > 0
+                                  ? group.subjects.join(", ")
+                                  : "No subjects"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Users className="w-4 h-4 mr-1" />
+                              {group.memberCount}/{group.maxMembers} members
+                            </div>
                           </div>
-                          <Progress value={group.progress} className="h-2" />
-                        </div>
 
-                        <div className="flex gap-2 pt-2">
-                          <Button size="sm" asChild>
-                            <Link to={`/group/${group.id}`}>View Details</Link>
-                          </Button>
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to="/chat">
-                              <MessageCircle className="w-4 h-4 mr-1" />
-                              Chat
-                            </Link>
-                          </Button>
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to="/virtual-room">
-                              <VideoIcon className="w-4 h-4 mr-1" />
-                              Join Room
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                          <div className="space-y-3">
+                            {group.nextSession && (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Next session: {group.nextSession}
+                              </div>
+                            )}
+
+                            {group.progress && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    Group Progress
+                                  </span>
+                                  <span className="font-medium">
+                                    {group.progress}%
+                                  </span>
+                                </div>
+                                <Progress value={group.progress} className="h-2" />
+                              </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleViewDetails(group.groupId)}
+                              >
+                                View Details
+                              </Button>
+                              {!group.isMember && (
+                                <Button size="sm" variant="outline">
+                                  <UserPlus className="w-4 h-4 mr-1" />
+                                  Request to Join
+                                </Button>
+                              )}
+                              <Button size="sm" variant="outline" asChild>
+                                <Link to="/chat">
+                                  <MessageCircle className="w-4 h-4 mr-1" />
+                                  Chat
+                                </Link>
+                              </Button>
+                              <Button size="sm" variant="outline" asChild>
+                                <Link to="/virtual-room">
+                                  <VideoIcon className="w-4 h-4 mr-1" />
+                                  Join Room
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                )}
               </TabsContent>
 
               <TabsContent value="schedule" className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">
                   Upcoming Sessions
                 </h2>
-                {upcomingSessions.map((session, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-foreground">
-                            {session.group}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {session.type}
-                          </p>
+                {groups.length === 0 && !loading && !error && (
+                  <p>No upcoming sessions. Join a group to see sessions!</p>
+                )}
+                {groups.map((group, index) => (
+                  group.nextSession && (
+                    <Card key={index}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium text-foreground">
+                              {group.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Study Session
+                            </p>
+                          </div>
+                          <Badge variant="outline">{group.nextSession}</Badge>
                         </div>
-                        <Badge variant="outline">{session.time}</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  )
                 ))}
               </TabsContent>
 

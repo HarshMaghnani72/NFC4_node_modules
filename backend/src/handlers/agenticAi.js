@@ -1,47 +1,14 @@
-const Group = require('../models/group.model');
 const User = require('../models/user.model');
-const { KMeans } = require('ml-kmeans');
+const Group = require('../models/group.model');
 const Notification = require('../models/notification.model');
 
 // Simulated external API for educational rewards (replace with real API integration)
 const rewardAPI = {
   async getCoupon(userId, subject) {
-    // Placeholder: Integrate with Coursera, Chegg, or other platforms
     return { code: `COUPON-${userId}-${Date.now()}`, value: '50% off', platform: subject.includes('Math') ? 'Khan Academy' : 'Coursera' };
   },
   async getTutorSession(userId) {
     return { sessionId: `TUTOR-${userId}-${Date.now()}`, duration: '30min', platform: 'TutorMe' };
-  }
-};
-
-// Proactive Group Optimization Agent
-exports.optimizeGroups = async () => {
-  try {
-    const groups = await Group.find().populate('members', 'xp studyHours tasksCompleted');
-    for (const group of groups) {
-      const activityThreshold = 50; // Define low activity threshold
-      if (group.activityScore < activityThreshold && group.members.length < group.maxMembers) {
-        const potentialMembers = await User.find({
-          subjects: { $in: group.subjects },
-          learningStyle: group.learningStyle,
-          acceptInvites: true,
-          _id: { $nin: group.members }
-        }).sort({ studyHours: -1 }).limit(3); // Top 3 active users
-
-        for (const user of potentialMembers) {
-          group.pendingInvites.push(user._id);
-          await Notification.create({
-            userId: user._id,
-            message: `You're invited to join ${group.name} to boost group productivity!`,
-            read: false
-          });
-        }
-        await group.save();
-      }
-    }
-    console.log('Group optimization completed');
-  } catch (error) {
-    console.error('Error in optimizeGroups:', error);
   }
 };
 
@@ -53,7 +20,6 @@ exports.generateStudyPlan = async (userId) => {
 
     const groups = await Group.find({ members: userId });
     const plan = {
-      userId,
       tasks: [],
       schedule: [],
       resources: []
@@ -81,7 +47,7 @@ exports.generateStudyPlan = async (userId) => {
     // Recommend resources
     plan.resources = user.subjects.map(subject => ({
       subject,
-      url: `https://example.com/${subject.toLowerCase()}-resources`, // Replace with real resource API
+      url: `https://example.com/${subject.toLowerCase()}-resources`,
       type: user.learningStyle
     }));
 
@@ -98,7 +64,37 @@ exports.generateStudyPlan = async (userId) => {
   }
 };
 
-// Dynamic Reward Allocator
+// Keep other functions unchanged
+exports.optimizeGroups = async () => {
+  try {
+    const groups = await Group.find().populate('members', 'xp studyHours tasksCompleted');
+    for (const group of groups) {
+      const activityThreshold = 50;
+      if (group.activityScore < activityThreshold && group.members.length < group.maxMembers) {
+        const potentialMembers = await User.find({
+          subjects: { $in: group.subjects },
+          learningStyle: group.learningStyle,
+          acceptInvites: true,
+          _id: { $nin: group.members }
+        }).sort({ studyHours: -1 }).limit(3);
+
+        for (const user of potentialMembers) {
+          group.pendingInvites.push(user._id);
+          await Notification.create({
+            userId: user._id,
+            message: `You're invited to join ${group.name} to boost group productivity!`,
+            read: false
+          });
+        }
+        await group.save();
+      }
+    }
+    console.log('Group optimization completed');
+  } catch (error) {
+    console.error('Error in optimizeGroups:', error);
+  }
+};
+
 exports.allocateRewards = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -107,9 +103,9 @@ exports.allocateRewards = async (userId) => {
     const contributionScore = user.studyHours + user.tasksCompleted * 2 + user.xp / 10;
     let reward = null;
 
-    if (contributionScore > 100) { // High engagement threshold
+    if (contributionScore > 100) {
       reward = await rewardAPI.getCoupon(userId, user.subjects[0]);
-    } else if (contributionScore > 50) { // Moderate engagement
+    } else if (contributionScore > 50) {
       reward = await rewardAPI.getTutorSession(userId);
     }
 
@@ -129,7 +125,6 @@ exports.allocateRewards = async (userId) => {
   }
 };
 
-// Smart Resource Recommender
 exports.recommendResources = async (groupId) => {
   try {
     const group = await Group.findById(groupId).populate('members', 'learningStyle subjects');
@@ -138,7 +133,7 @@ exports.recommendResources = async (groupId) => {
     const primaryLearningStyle = group.learningStyle;
     const resources = group.subjects.map(subject => ({
       subject,
-      url: `https://example.com/${subject.toLowerCase()}-resources`, // Replace with real resource API
+      url: `https://example.com/${subject.toLowerCase()}-resources`,
       type: primaryLearningStyle,
       recommendedAt: new Date()
     }));
@@ -155,13 +150,12 @@ exports.recommendResources = async (groupId) => {
   }
 };
 
-// Conflict Resolution Agent
 exports.monitorGroupHealth = async (groupId) => {
   try {
     const group = await Group.findById(groupId).populate('members', 'studyHours ratings');
     if (!group) throw new Error('Group not found');
 
-    const lowEngagementUsers = group.members.filter(member => member.studyHours < 10); // Low engagement threshold
+    const lowEngagementUsers = group.members.filter(member => member.studyHours < 10);
     if (lowEngagementUsers.length > group.members.length / 2) {
       await Notification.create({
         userId: group.members.map(m => m._id),

@@ -14,6 +14,7 @@ import {
   Mic,
   MicOff,
   ScreenShare,
+  StopCircle,
   Download,
   Play,
   Pause,
@@ -26,33 +27,64 @@ import {
   Square,
   Circle,
   Type,
+  Users,
+  Wifi,
+  WifiOff,
+  Phone,
+  PhoneOff,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 
 export const VirtualRoom = () => {
+  // Connection and Session State
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectedUsers, setConnectedUsers] = useState([]);
+  const [sessionId, setSessionId] = useState("");
+  const [userName, setUserName] = useState("");
+  const [isHost, setIsHost] = useState(false);
+
+  // Media State
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [remoteScreenShare, setRemoteScreenShare] = useState(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStreams, setRemoteStreams] = useState(new Map());
+
+  // Timer State
   const [timerMinutes, setTimerMinutes] = useState(25);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerType, setTimerType] = useState("pomodoro");
+
+  // Whiteboard State
   const [selectedTool, setSelectedTool] = useState("pen");
   const [penColor, setPenColor] = useState("#000000");
   const [penSize, setPenSize] = useState(2);
   const [eraserSize, setEraserSize] = useState(10);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [timerType, setTimerType] = useState("pomodoro");
+  const [textInput, setTextInput] = useState("");
+  const [textPosition, setTextPosition] = useState(null);
+
+  // App State
   const [todos, setTodos] = useState([]);
   const [todoInput, setTodoInput] = useState("");
   const [studyHours, setStudyHours] = useState(0);
   const [xpPoints, setXpPoints] = useState(100);
   const [showNotification, setShowNotification] = useState(false);
-  const [textInput, setTextInput] = useState("");
-  const [textPosition, setTextPosition] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+
+  // Refs
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
   const whiteboardRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const screenShareVideoRef = useRef(null);
+  const socketRef = useRef(null);
+  const peerConnectionsRef = useRef(new Map());
+  const remoteVideosRef = useRef(new Map());
 
   const whiteboardTools = [
     { id: "pen", icon: PenTool, name: "Pen" },
@@ -62,86 +94,313 @@ export const VirtualRoom = () => {
     { id: "text", icon: Type, name: "Text" },
   ];
 
+  // WebRTC Configuration
+  const iceServers = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ],
+  };
+
+  // Initialize Socket Connection
+  useEffect(() => {
+    // In a real app, replace with your server URL
+    const SOCKET_SERVER = "ws://localhost:8080";
+
+    try {
+      socketRef.current = {
+        // Mock socket for demo - replace with actual socket.io
+        emit: (event, data) => {
+          console.log(`Socket emit: ${event}`, data);
+          // Simulate responses for demo
+          setTimeout(() => {
+            if (event === "join-session") {
+              setIsConnected(true);
+              setConnectedUsers([
+                { id: "user1", name: "You", isHost: true },
+                { id: "user2", name: "Study Partner", isHost: false },
+              ]);
+            }
+          }, 1000);
+        },
+        on: (event, callback) => {
+          console.log(`Socket listener: ${event}`);
+        },
+        disconnect: () => {
+          console.log("Socket disconnected");
+        },
+      };
+    } catch (error) {
+      console.error("Socket connection failed:", error);
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
   // Initialize Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    const context = canvas.getContext("2d");
-    context.lineCap = "round";
-    contextRef.current = context;
+    if (canvas) {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      const context = canvas.getContext("2d");
+      context.lineCap = "round";
+      context.strokeStyle = penColor;
+      context.lineWidth = penSize;
+      contextRef.current = context;
+    }
   }, []);
 
-  // Update canvas context when tool, color, or size changes
+  // Update canvas context when tool changes
   useEffect(() => {
     const context = contextRef.current;
     if (context) {
-      context.strokeStyle = selectedTool === "eraser" ? "#FFFFFF" : penColor;
-      context.lineWidth = selectedTool === "eraser" ? eraserSize : penSize;
+      if (selectedTool === "eraser") {
+        context.globalCompositeOperation = "destination-out";
+        context.lineWidth = eraserSize;
+      } else {
+        context.globalCompositeOperation = "source-over";
+        context.strokeStyle = penColor;
+        context.fillStyle = penColor;
+        context.lineWidth = penSize;
+      }
     }
   }, [selectedTool, penColor, penSize, eraserSize]);
 
-  // Whiteboard Drawing
+  // Join Session
+  const joinSession = async () => {
+    if (!userName.trim()) {
+      alert("Please enter your name");
+      return;
+    }
+
+    try {
+      // Initialize local media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: isVideoOn,
+        audio: isAudioOn,
+      });
+
+      setLocalStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      // Join session via socket
+      const roomId = sessionId || `room_${Date.now()}`;
+      setSessionId(roomId);
+
+      socketRef.current?.emit("join-session", {
+        sessionId: roomId,
+        userName: userName,
+        isHost: !sessionId, // Host if creating new session
+      });
+
+      setIsHost(!sessionId);
+    } catch (error) {
+      console.error("Failed to join session:", error);
+      alert("Failed to access camera/microphone. Please check permissions.");
+    }
+  };
+
+  // Leave Session
+  const leaveSession = () => {
+    // Stop all streams
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+
+    // Close all peer connections
+    peerConnectionsRef.current.forEach((pc) => pc.close());
+    peerConnectionsRef.current.clear();
+
+    // Reset state
+    setIsConnected(false);
+    setConnectedUsers([]);
+    setRemoteStreams(new Map());
+    setIsScreenSharing(false);
+    setRemoteScreenShare(null);
+
+    socketRef.current?.emit("leave-session", { sessionId });
+  };
+
+  // Screen Share Implementation
+  const toggleScreenShare = async () => {
+    try {
+      if (!isScreenSharing) {
+        // Start screen sharing
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            mediaSource: "screen",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30 },
+          },
+          audio: true,
+        });
+
+        setIsScreenSharing(true);
+
+        if (screenShareVideoRef.current) {
+          screenShareVideoRef.current.srcObject = screenStream;
+        }
+
+        // Broadcast screen share to all peers
+        socketRef.current?.emit("screen-share-start", {
+          sessionId,
+          streamId: screenStream.id,
+        });
+
+        // Replace video track in all peer connections
+        peerConnectionsRef.current.forEach(async (pc, userId) => {
+          const videoTrack = screenStream.getVideoTracks()[0];
+          const sender = pc
+            .getSenders()
+            .find((s) => s.track && s.track.kind === "video");
+          if (sender) {
+            await sender.replaceTrack(videoTrack);
+          }
+        });
+
+        // Handle when user stops sharing
+        screenStream.getVideoTracks()[0].addEventListener("ended", () => {
+          stopScreenShare();
+        });
+      } else {
+        stopScreenShare();
+      }
+    } catch (error) {
+      console.error("Screen share error:", error);
+      alert("Screen sharing failed. Please try again.");
+    }
+  };
+
+  const stopScreenShare = async () => {
+    setIsScreenSharing(false);
+
+    if (screenShareVideoRef.current) {
+      const stream = screenShareVideoRef.current.srcObject;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        screenShareVideoRef.current.srcObject = null;
+      }
+    }
+
+    // Notify peers
+    socketRef.current?.emit("screen-share-stop", { sessionId });
+
+    // Switch back to camera
+    if (localStream && isVideoOn) {
+      peerConnectionsRef.current.forEach(async (pc, userId) => {
+        const videoTrack = localStream.getVideoTracks()[0];
+        const sender = pc
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+        if (sender && videoTrack) {
+          await sender.replaceTrack(videoTrack);
+        }
+      });
+    }
+  };
+
+  // Toggle Video/Audio
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !isVideoOn;
+        setIsVideoOn(!isVideoOn);
+      }
+    }
+  };
+
+  const toggleAudio = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !isAudioOn;
+        setIsAudioOn(!isAudioOn);
+      }
+    }
+  };
+
+  // Whiteboard Drawing Functions
   const startDrawing = ({ nativeEvent }) => {
     const { offsetX, offsetY } = nativeEvent;
     const context = contextRef.current;
+
+    if (selectedTool === "text") {
+      setTextPosition({ x: offsetX, y: offsetY });
+      return;
+    }
+
     context.beginPath();
     context.moveTo(offsetX, offsetY);
+
     if (selectedTool === "pen" || selectedTool === "eraser") {
       setIsDrawing(true);
-    } else if (selectedTool === "square" || selectedTool === "circle") {
-      setTextPosition({
+      // Broadcast drawing start
+      socketRef.current?.emit("drawing-start", {
+        sessionId,
         x: offsetX,
         y: offsetY,
-        startX: offsetX,
-        startY: offsetY,
+        tool: selectedTool,
+        color: penColor,
+        size: selectedTool === "eraser" ? eraserSize : penSize,
       });
-      setIsDrawing(true);
-    } else if (selectedTool === "text") {
-      setTextPosition({ x: offsetX, y: offsetY });
     }
   };
 
   const draw = ({ nativeEvent }) => {
     if (!isDrawing) return;
     const { offsetX, offsetY } = nativeEvent;
+    const context = contextRef.current;
+
     if (selectedTool === "pen" || selectedTool === "eraser") {
-      contextRef.current.lineTo(offsetX, offsetY);
-      contextRef.current.stroke();
-    } else if (selectedTool === "square" || selectedTool === "circle") {
-      setTextPosition((prev) => ({ ...prev, x: offsetX, y: offsetY }));
+      context.lineTo(offsetX, offsetY);
+      context.stroke();
+
+      // Broadcast drawing
+      socketRef.current?.emit("drawing", {
+        sessionId,
+        x: offsetX,
+        y: offsetY,
+        tool: selectedTool,
+        color: penColor,
+        size: selectedTool === "eraser" ? eraserSize : penSize,
+      });
     }
   };
 
   const stopDrawing = () => {
-    if (selectedTool === "square" && isDrawing) {
-      const { startX, startY, x, y } = textPosition;
-      contextRef.current.beginPath();
-      contextRef.current.rect(startX, startY, x - startX, y - startY);
-      contextRef.current.stroke();
-    } else if (selectedTool === "circle" && isDrawing) {
-      const { startX, startY, x, y } = textPosition;
-      const radius = Math.sqrt(
-        Math.pow(x - startX, 2) + Math.pow(y - startY, 2)
-      );
-      contextRef.current.beginPath();
-      contextRef.current.arc(startX, startY, radius, 0, 2 * Math.PI);
-      contextRef.current.stroke();
-    }
     setIsDrawing(false);
-  };
-
-  const addText = () => {
-    if (selectedTool === "text" && textPosition && textInput) {
-      contextRef.current.font = "16px Arial";
-      contextRef.current.fillStyle = penColor;
-      contextRef.current.fillText(textInput, textPosition.x, textPosition.y);
-      setTextInput("");
-      setTextPosition(null);
+    if (selectedTool === "pen" || selectedTool === "eraser") {
+      socketRef.current?.emit("drawing-end", { sessionId });
     }
   };
 
-  // Pomodoro Timer and Study Hours
+  // Chat Functions
+  const sendChatMessage = () => {
+    if (chatInput.trim()) {
+      const message = {
+        id: Date.now(),
+        user: userName,
+        text: chatInput,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setChatMessages((prev) => [...prev, message]);
+      socketRef.current?.emit("chat-message", { sessionId, message });
+      setChatInput("");
+    }
+  };
+
+  // Timer Functions
   useEffect(() => {
     let interval;
     if (isTimerRunning && (timerMinutes > 0 || timerSeconds > 0)) {
@@ -153,22 +412,15 @@ export const VirtualRoom = () => {
           setTimerSeconds(59);
         }
       }, 1000);
-      setStudyHours((prev) => prev + 1 / 3600); // Increment study hours
-    } else if (timerMinutes === 0 && timerSeconds === 0) {
+      setStudyHours((prev) => prev + 1 / 3600);
+    } else if (timerMinutes === 0 && timerSeconds === 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      setXpPoints((prev) => prev + 10); // Award XP on timer completion
+      setXpPoints((prev) => prev + 10);
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 3000);
-      if (timerType === "pomodoro") {
-        setTimerType("break");
-        setTimerMinutes(5);
-      } else if (timerType === "break") {
-        setTimerType("pomodoro");
-        setTimerMinutes(25);
-      }
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, timerMinutes, timerSeconds, timerType]);
+  }, [isTimerRunning, timerMinutes, timerSeconds]);
 
   const resetTimer = () => {
     setTimerMinutes(
@@ -178,69 +430,67 @@ export const VirtualRoom = () => {
     setIsTimerRunning(false);
   };
 
-  const handleScreenShare = async () => {
-    try {
-      if (!isScreenSharing) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: isVideoOn,
-          audio: isAudioOn,
-        });
-        setIsScreenSharing(true);
-        stream.getVideoTracks()[0].onended = () => setIsScreenSharing(false);
-      } else {
-        setIsScreenSharing(false);
-      }
-    } catch (err) {
-      console.error("Error sharing screen:", err);
-    }
-  };
-
+  // Todo Functions
   const addTodo = () => {
     if (todoInput.trim()) {
-      setTodos([
-        ...todos,
-        { id: todos.length + 1, text: todoInput, completed: false },
-      ]);
+      const newTodo = { id: Date.now(), text: todoInput, completed: false };
+      setTodos((prev) => [...prev, newTodo]);
+      socketRef.current?.emit("todo-add", { sessionId, todo: newTodo });
       setTodoInput("");
-      setXpPoints((prev) => prev + 5); // Award XP for adding todo
+      setXpPoints((prev) => prev + 5);
     }
   };
 
   const toggleTodo = (id) => {
-    setTodos(
-      todos.map((todo) =>
+    setTodos((prev) =>
+      prev.map((todo) =>
         todo.id === id ? { ...todo, completed: !todo.completed } : todo
       )
     );
-    if (!todos.find((todo) => todo.id === id).completed) {
-      setXpPoints((prev) => prev + 10); // Award XP for completing todo
-    }
+    socketRef.current?.emit("todo-toggle", { sessionId, todoId: id });
   };
 
-const toggleFullScreen = () => {
-  const elem = whiteboardRef.current as HTMLElement | null;
-  if (!isFullScreen) {
-    if (elem) {
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch((err) => console.error(err));
-      } else if ((elem as any).webkitRequestFullscreen) {
-        (elem as any).webkitRequestFullscreen().catch((err: any) => console.error(err));
-      } else if ((elem as any).msRequestFullscreen) {
-        (elem as any).msRequestFullscreen().catch((err: any) => console.error(err));
-      }
-      setIsFullScreen(true);
-    }
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen().catch((err) => console.error(err));
-    } else if ((document as any).webkitExitFullscreen) {
-      (document as any).webkitExitFullscreen().catch((err: any) => console.error(err));
-    } else if ((document as any).msExitFullscreen) {
-      (document as any).msExitFullscreen().catch((err: any) => console.error(err));
-    }
-    setIsFullScreen(false);
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle className="text-center">
+                Join Virtual Study Session
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                placeholder="Enter your name"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+              />
+              <Input
+                placeholder="Session ID (leave empty to create new)"
+                value={sessionId}
+                onChange={(e) => setSessionId(e.target.value)}
+              />
+              <Button
+                className="w-full"
+                onClick={joinSession}
+                disabled={!userName.trim()}
+              >
+                <Video className="w-4 h-4 mr-2" />
+                Join Session
+              </Button>
+              <div className="text-sm text-muted-foreground text-center">
+                {sessionId
+                  ? "Joining existing session"
+                  : "Creating new session"}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
-};
 
   return (
     <div className="min-h-screen bg-background">
@@ -253,23 +503,26 @@ const toggleFullScreen = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground">
-                  Advanced Calculus Study Session
+                  Virtual Study Session
                 </h1>
                 <Badge
                   variant="outline"
                   className="bg-green-100 text-green-700 border-green-200"
                 >
-                  Live
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Connected
                 </Badge>
                 <Badge variant="secondary">
-                  Matched: Calculus, Visual/Auditory
+                  <Users className="w-3 h-3 mr-1" />
+                  {connectedUsers.length} Users
                 </Badge>
+                <Badge variant="outline">Room: {sessionId.slice(-6)}</Badge>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant={isVideoOn ? "default" : "destructive"}
                   size="icon"
-                  onClick={() => setIsVideoOn(!isVideoOn)}
+                  onClick={toggleVideo}
                 >
                   {isVideoOn ? (
                     <Video className="w-4 h-4" />
@@ -280,7 +533,7 @@ const toggleFullScreen = () => {
                 <Button
                   variant={isAudioOn ? "default" : "destructive"}
                   size="icon"
-                  onClick={() => setIsAudioOn(!isAudioOn)}
+                  onClick={toggleAudio}
                 >
                   {isAudioOn ? (
                     <Mic className="w-4 h-4" />
@@ -291,18 +544,76 @@ const toggleFullScreen = () => {
                 <Button
                   variant={isScreenSharing ? "secondary" : "outline"}
                   size="sm"
-                  onClick={handleScreenShare}
+                  onClick={toggleScreenShare}
                 >
-                  <ScreenShare className="w-4 h-4 mr-2" />
-                  {isScreenSharing ? "Stop Screen Share" : "Start Screen Share"}
+                  {isScreenSharing ? (
+                    <>
+                      <StopCircle className="w-4 h-4 mr-2" />
+                      Stop Share
+                    </>
+                  ) : (
+                    <>
+                      <ScreenShare className="w-4 h-4 mr-2" />
+                      Share Screen
+                    </>
+                  )}
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  Sync Calendar
+                <Button variant="destructive" size="sm" onClick={leaveSession}>
+                  <PhoneOff className="w-4 h-4 mr-2" />
+                  Leave
                 </Button>
               </div>
             </div>
           </div>
+
+          {/* Video Grid */}
+          <div className="bg-gray-900 p-4">
+            <div className="grid grid-cols-2 gap-4 h-48">
+              {/* Local Video */}
+              <div className="relative bg-gray-800 rounded-lg overflow-hidden">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                  You {isHost && "(Host)"}
+                </div>
+                {!isVideoOn && (
+                  <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+                    <VideoOff className="w-8 h-8 text-gray-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* Remote Video or Screen Share */}
+              <div className="relative bg-gray-800 rounded-lg overflow-hidden">
+                {isScreenSharing ? (
+                  <video
+                    ref={screenShareVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <Users className="w-8 h-8 mx-auto mb-2" />
+                      <p className="text-sm">Waiting for study partner...</p>
+                    </div>
+                  </div>
+                )}
+                {isScreenSharing && (
+                  <div className="absolute bottom-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
+                    Screen Share Active
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Whiteboard Area */}
           <div className="flex-1 flex">
             <div
@@ -322,21 +633,19 @@ const toggleFullScreen = () => {
                         variant={selectedTool === tool.id ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setSelectedTool(tool.id)}
-                        className="p-2 relative group"
+                        className="p-2"
                       >
                         <tool.icon className="w-4 h-4" />
-                        <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
-                          {tool.name}
-                        </span>
                       </Button>
                     ))}
-                    <input
-                      type="color"
-                      value={penColor}
-                      onChange={(e) => setPenColor(e.target.value)}
-                      className="w-8 h-8 p-1 rounded"
-                      title="Pen Color"
-                    />
+                    <div className="flex items-center gap-2 border rounded p-1">
+                      <input
+                        type="color"
+                        value={penColor}
+                        onChange={(e) => setPenColor(e.target.value)}
+                        className="w-6 h-6 rounded cursor-pointer"
+                      />
+                    </div>
                     {selectedTool !== "eraser" && (
                       <input
                         type="range"
@@ -345,7 +654,6 @@ const toggleFullScreen = () => {
                         value={penSize}
                         onChange={(e) => setPenSize(parseInt(e.target.value))}
                         className="w-20"
-                        title="Pen Size"
                       />
                     )}
                     {selectedTool === "eraser" && (
@@ -358,118 +666,85 @@ const toggleFullScreen = () => {
                           setEraserSize(parseInt(e.target.value))
                         }
                         className="w-20"
-                        title="Eraser Size"
                       />
                     )}
-                    {selectedTool === "text" && textPosition && (
-                      <div className="flex gap-2">
-                        <Input
-                          value={textInput}
-                          onChange={(e) => setTextInput(e.target.value)}
-                          placeholder="Enter text"
-                          className="w-32"
-                        />
-                        <Button size="sm" onClick={addText}>
-                          Add Text
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const canvas = canvasRef.current;
-                        const link = document.createElement("a");
-                        link.download = "whiteboard.png";
-                        link.href = canvas.toDataURL("image/png");
-                        link.click();
-                      }}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Save
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        contextRef.current.clearRect(
-                          0,
-                          0,
-                          canvasRef.current.width,
-                          canvasRef.current.height
-                        )
-                      }
-                    >
-                      Clear
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleFullScreen}
-                    >
-                      {isFullScreen ? (
-                        <Minimize className="w-4 h-4" />
-                      ) : (
-                        <Maximize className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const canvas = canvasRef.current;
+                      const context = contextRef.current;
+                      context.clearRect(0, 0, canvas.width, canvas.height);
+                      socketRef.current?.emit("whiteboard-clear", {
+                        sessionId,
+                      });
+                    }}
+                  >
+                    Clear
+                  </Button>
                 </div>
               </div>
-              {/* Whiteboard Canvas */}
-              <div className="flex-1 bg-white dark:bg-gray-950 flex items-center justify-center relative">
+
+              {/* Canvas */}
+              <div className="flex-1 bg-white dark:bg-gray-950 relative">
                 <canvas
                   ref={canvasRef}
                   className="absolute inset-0 w-full h-full cursor-crosshair"
-                  style={{ touchAction: "none" }}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
-                  onMouseOut={stopDrawing}
+                  onMouseLeave={stopDrawing}
                 />
-                <div className="text-center text-muted-foreground">
-                  <PenTool className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">Interactive Whiteboard</p>
-                  <p className="text-sm">
-                    Click and drag to draw • Use tools above
-                  </p>
-                </div>
               </div>
             </div>
           </div>
         </div>
+
         {/* Right Sidebar */}
         <div className="w-80 border-l bg-card/30 flex flex-col">
-          {/* Notification */}
-          {showNotification && (
-            <div className="m-4 p-2 bg-green-100 text-green-700 rounded text-sm flex items-center">
-              <Trophy className="w-4 h-4 mr-2" /> Timer complete! +10 XP
-            </div>
-          )}
-          {/* Pomodoro Timer */}
-          <Card className="m-4 mb-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <Clock className="w-5 h-5 mr-2" />
+          {/* Connected Users */}
+          <Card className="m-4 mb-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Users className="w-4 h-4 mr-2" />
+                Connected Users ({connectedUsers.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {connectedUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span>{user.name}</span>
+                  {user.isHost && (
+                    <Badge variant="secondary" className="text-xs">
+                      Host
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Timer */}
+          <Card className="m-4 mb-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Clock className="w-4 h-4 mr-2" />
                 Focus Timer
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">
+                <div className="text-2xl font-bold">
                   {String(timerMinutes).padStart(2, "0")}:
                   {String(timerSeconds).padStart(2, "0")}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {timerType === "pomodoro"
-                    ? "Pomodoro Session"
-                    : timerType === "break"
-                    ? "Break"
-                    : "Custom Timer"}
+                <p className="text-xs text-muted-foreground">
+                  {timerType === "pomodoro" ? "Focus Session" : "Break Time"}
                 </p>
-                <p className="text-sm">Study Hours: {studyHours.toFixed(1)}</p>
               </div>
               <div className="flex justify-center gap-2">
                 <Button
@@ -478,59 +753,45 @@ const toggleFullScreen = () => {
                   onClick={() => setIsTimerRunning(!isTimerRunning)}
                 >
                   {isTimerRunning ? (
-                    <Pause className="w-4 h-4" />
+                    <Pause className="w-3 h-3" />
                   ) : (
-                    <Play className="w-4 h-4" />
+                    <Play className="w-3 h-3" />
                   )}
                 </Button>
                 <Button variant="outline" size="sm" onClick={resetTimer}>
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-3 h-3" />
                 </Button>
-                <select
-                  value={timerType}
-                  onChange={(e) => {
-                    setTimerType(e.target.value);
-                    setTimerMinutes(
-                      e.target.value === "pomodoro"
-                        ? 25
-                        : e.target.value === "break"
-                        ? 5
-                        : 15
-                    );
-                    setTimerSeconds(0);
-                  }}
-                  className="text-sm border rounded p-1"
-                >
-                  <option value="pomodoro">Pomodoro (25m)</option>
-                  <option value="break">Break (5m)</option>
-                  <option value="custom">Custom (15m)</option>
-                </select>
               </div>
             </CardContent>
           </Card>
-          {/* To-Do List */}
-          <Card className="m-4 mb-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <CheckSquare className="w-5 h-5 mr-2" />
-                Shared To-Do List
+
+          {/* Shared Todo */}
+          <Card className="m-4 mb-2 flex-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <CheckSquare className="w-4 h-4 mr-2" />
+                Shared Tasks
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2 mb-3">
                 <Input
                   placeholder="Add task..."
                   value={todoInput}
                   onChange={(e) => setTodoInput(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && addTodo()}
+                  className="text-sm h-8"
                 />
-                <Button size="icon" onClick={addTodo}>
-                  <Send className="w-4 h-4" />
+                <Button size="sm" onClick={addTodo}>
+                  <Send className="w-3 h-3" />
                 </Button>
               </div>
-              <ScrollArea className="h-24">
+              <ScrollArea className="h-32">
                 {todos.map((todo) => (
-                  <div key={todo.id} className="flex items-center gap-2 mb-2">
+                  <div
+                    key={todo.id}
+                    className="flex items-center gap-2 mb-2 text-sm"
+                  >
                     <input
                       type="checkbox"
                       checked={todo.completed}
@@ -550,8 +811,46 @@ const toggleFullScreen = () => {
               </ScrollArea>
             </CardContent>
           </Card>
+
+          {/* Chat */}
+          <Card className="m-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Quick Chat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-24 mb-2 border rounded p-2">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className="text-xs mb-1">
+                    <span className="font-medium">{msg.user}:</span> {msg.text}
+                  </div>
+                ))}
+              </ScrollArea>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type message..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && sendChatMessage()}
+                  className="text-sm h-8"
+                />
+                <Button size="sm" onClick={sendChatMessage}>
+                  <Send className="w-3 h-3" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Notifications */}
+      {showNotification && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
+          <div className="flex items-center">
+            <Trophy className="w-5 h-5 mr-2" />
+            Timer completed! +10 XP earned
+          </div>
+        </div>
+      )}
     </div>
   );
 };
