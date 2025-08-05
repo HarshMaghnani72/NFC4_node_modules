@@ -6,25 +6,31 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import axios from "axios";
-import Cookies from "js-cookie";
+import { useAuth } from "@/context/AuthContext";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const baseUrl = "https://2896f11e75d1.ngrok-free.app";
+  const baseUrl = "https://33edacd35f73.ngrok-free.app";
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${baseUrl}/auth/login`, {
+      const response = await axios.post(`${baseUrl}/auth/login`, {
         email,
         password,
       });
+
+      const token = response.data.token;
+      login(token);
+      console.log("Logged in, token saved:", token);
       navigate("/dashboard");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err.response?.data || err.message);
       setError(
         err.response?.data?.message || "Login failed. Please try again."
