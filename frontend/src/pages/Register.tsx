@@ -83,7 +83,7 @@ export const Register = () => {
 
     try {
       const res = await fetch(
-        "https://2896f11e75d1.ngrok-free.app/auth/register",
+        "https://33edacd35f73.ngrok-free.app/auth/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
