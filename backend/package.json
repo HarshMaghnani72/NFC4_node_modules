@@ -26,6 +26,8 @@
     "google-auth-library": "^10.2.1",
     "googleapis": "^155.0.0",
     "jsonwebtoken": "^9.0.2",
+    "ml-kmeans": "^6.0.0",
+    "ml-random-forest": "^2.1.0",
     "mongodb": "^6.18.0",
     "mongoose": "^8.17.0",
     "multer": "^2.0.2",

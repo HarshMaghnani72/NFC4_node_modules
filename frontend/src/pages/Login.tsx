@@ -1,56 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const { toast } = useToast();
-
-  const baseUrl = "https://33edacd35f73.ngrok-free.app";
+  const { login, isAuthenticated } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
-      const response = await axios.post(`${baseUrl}/auth/login`, {
-        email,
-        password,
-      });
-
-      const token = response.data.token;
-      login(token);
-
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-        variant: "default",
-      });
-
-      navigate("/dashboard");
+      await login(email, password); // Use login from AuthContext
     } catch (err: any) {
-      console.error("Login error:", err.response?.data || err.message);
-      const message =
-        err.response?.data?.message || "Login failed. Please try again.";
-      setError(message);
-
-      toast({
-        title: "Login Failed",
-        description: message,
-        variant: "destructive",
-      });
+      console.error("Login error:", err.message);
+      setError(err.message || "Login failed. Please try again.");
     }
   };
+
+  // Navigate to dashboard when isAuthenticated becomes true
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log("Login: isAuthenticated is true, navigating to /dashboard");
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 flex items-center justify-center py-12">

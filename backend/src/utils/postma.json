@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "XCollection",
-        "description": "Postman collection for testing the Smart Study Group Matchmaking Platform APIs",
+        "description": "Postman collection for testing the Smart Study Group Matchmaking Platform APIs with agentic AI and file upload",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -112,7 +112,7 @@
                             "port": "3000",
                             "path": ["user", "profile"]
                         },
-                        "description": "Retrieve user profile. Requires session cookie from Login."
+                        "description": "Retrieve user profile, including match history. Requires session cookie."
                     }
                 },
                 {
@@ -200,7 +200,7 @@
                             "port": "3000",
                             "path": ["group", "matches"]
                         },
-                        "description": "Get AI-matched study groups based on compatibility. Requires session cookie."
+                        "description": "Get AI-matched study groups with behavior-based scoring. Requires session cookie."
                     }
                 },
                 {
@@ -308,6 +308,29 @@
                         },
                         "description": "Decline a group invite. Replace {{group_id}} and {{user_id}} with valid IDs. Requires session cookie."
                     }
+                },
+                {
+                    "name": "Autonomous Group Formation",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/group/autonomous",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "autonomous"]
+                        },
+                        "description": "Trigger AI-driven autonomous group formation based on user preferences and behavior. Requires session cookie."
+                    }
                 }
             ]
         },
@@ -379,6 +402,35 @@
         {
             "name": "Chat",
             "item": [
+                {
+                    "name": "Upload File",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "groupId",
+                                    "value": "{{group_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/chat/upload",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["chat", "upload"]
+                        },
+                        "description": "Upload a file to GridFS and get fileId. Replace {{group_id}} with a valid group ID. Select a file (e.g., PDF, image) in the 'file' field. Requires session cookie."
+                    }
+                },
                 {
                     "name": "Send Message",
                     "request": {
@@ -661,7 +713,8 @@
                 "type": "text/javascript",
                 "exec": [
                     "// Run 'Login' or 'Register' first to obtain connect.sid session cookie.",
-                    "// Replace placeholders like {{user_id}}, {{group_id}}, {{todo_id}}, {{notification_id}}, {{file_id}}, {{google_id_token}}, and {{google_access_token}} with valid values."
+                    "// Replace placeholders like {{user_id}}, {{group_id}}, {{todo_id}}, {{notification_id}}, {{file_id}}, {{google_id_token}}, and {{google_access_token}} with valid values.",
+                    "// Use 'Upload File' to get a file_id for 'Send Message' and 'Get File' requests."
                 ]
             }
         }

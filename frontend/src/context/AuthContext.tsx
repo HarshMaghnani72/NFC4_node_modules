@@ -1,41 +1,91 @@
-// src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, AuthState } from '@/types/auth';
 
-interface AuthContextType {
-  isLoggedIn: boolean;
-  login: (token: string) => void;
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    isAuthenticated: false,
+    isLoading: true,
+  });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
+    const storedUser = localStorage.getItem('quickdesk_user');
+    if (storedUser) {
+      setAuthState({
+        user: JSON.parse(storedUser),
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } else {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    }
   }, []);
 
-  const login = (token: string) => {
-    localStorage.setItem("token", token);
-    setIsLoggedIn(true);
-  };
+  const login = async (email: string, password: string) => {
+    setAuthState(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const response = await fetch('https://ce4a4944c167.ngrok-free.app/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      const user: User = {
+        userId: data.userId,
+      };
+
+      localStorage.setItem('quickdesk_user', JSON.stringify(user));
+      setAuthState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
   const logout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
+    localStorage.removeItem('quickdesk_user');
+    setAuthState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{
+      ...authState,
+      login,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
 };

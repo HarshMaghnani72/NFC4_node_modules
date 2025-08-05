@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
         start: { type: Date },
         end: { type: Date }
     },
-    learningStyle: { type: String, enum: ['Visual', 'Auditory', 'Kinesthetic'] },
+    learningStyle: { type: String, enum: ['Visual', 'Auditory', 'Kinesthetic','Mixed'] },
     studyHours: { type: Number, default: 0 },
     tasksCompleted: { type: Number, default: 0 },
     xp: { type: Number, default: 0 },

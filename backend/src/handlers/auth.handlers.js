@@ -63,7 +63,7 @@ exports.googleLogin = async (req, res) => {
             user = new User({
                 name,
                 email,
-                password: 'google-auth', // No password needed for Google login
+                password: 'google-auth',
                 institute: '',
                 subjects: [],
                 language: 'English',

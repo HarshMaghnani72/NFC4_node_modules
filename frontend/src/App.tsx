@@ -13,6 +13,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { Groups } from "./pages/Groups";
 import { GroupDetail } from "./pages/GroupDetail";
 import { VirtualRoom } from "./pages/VirtualRoom";
+import { Profile } from "./pages/Profile";
+
 import { Chat } from "./pages/Chat";
 import { Progress } from "./pages/Progress";
 import { ProtectedRoute } from "./pages/ProtectedRoute";
@@ -37,6 +39,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+            <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile/>
               </ProtectedRoute>
             }
           />

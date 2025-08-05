@@ -17,8 +17,9 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-
+import {useAuth } from '../context/AuthContext';
 export const Dashboard = () => {
+  const { user } = useAuth();
   const myGroups = [
     {
       id: 1,
