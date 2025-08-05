@@ -1,23 +1,5 @@
 const mongoose = require('mongoose');
-const studyPlanSchema = new mongoose.Schema({
-  tasks: [{
-    title: String,
-    dueDate: Date,
-    type: String
-  }],
-  schedule: [{
-    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
-    time: Date,
-    duration: String,
-    title: String
-  }],
-  resources: [{
-    subject: String,
-    url: String,
-    type: String
-  }],
-  createdAt: { type: Date, default: Date.now }
-});
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },

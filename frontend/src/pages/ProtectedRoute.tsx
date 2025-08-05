@@ -1,30 +1,21 @@
-import { useAuth } from '@/context/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { ReactNode } from 'react';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProtectedRouteProps {
-    children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-    const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-    console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'userId:', user?.userId, 'isLoading:', isLoading); // Debug log
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a loading spinner component
+  }
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-background">
-                <div className="container mx-auto px-4 py-8">
-                    <p>Loading...</p>
-                </div>
-            </div>
-        );
-    }
+  if (!isAuthenticated) {
+    console.log("ProtectedRoute: Redirecting to /login because isAuthenticated is false");
+    return <Navigate to="/login" replace />;
+  }
 
-    if (!isAuthenticated || !user?.userId) {
-        console.log('ProtectedRoute: Redirecting to /login because isAuthenticated is false or userId is missing');
-        return <Navigate to="/login" replace />;
-    }
-
-    return <>{children}</>;
+  return <>{children}</>;
 };

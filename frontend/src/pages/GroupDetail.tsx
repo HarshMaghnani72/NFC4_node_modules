@@ -157,7 +157,7 @@ export const GroupDetail = () => {
                     </Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link to={`/chat/${groupData._id}`}>
+                    <Link to="/chat">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Group Chat
                     </Link>
@@ -330,11 +330,9 @@ export const GroupDetail = () => {
                             </div>
                           </div>
                           {user && member._id !== userId && (
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to={`/chat/direct/${member._id}`}>
-                                <MessageCircle className="w-4 h-4 mr-1" />
-                                Message
-                              </Link>
+                            <Button variant="outline" size="sm">
+                              <MessageCircle className="w-4 h-4 mr-1" />
+                              Message
                             </Button>
                           )}
                         </div>
@@ -396,7 +394,7 @@ export const GroupDetail = () => {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to={`/chat/${groupData._id}`}>
+                  <Link to="/chat">
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Open Group Chat
                   </Link>

@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,154 +7,348 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Send, 
-  Search, 
-  Paperclip, 
-  Smile, 
-  Users, 
+import { toast } from "@/components/ui/sonner";
+import {
+  Send,
+  Search,
+  Paperclip,
+  Smile,
+  Users,
   Bell,
   Calendar,
   FileText,
   Image,
   MoreVertical,
   Pin,
-  Star
+  Star,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { useAuth } from "../context/AuthContext";
 
 export const Chat = () => {
-  const [selectedChat, setSelectedChat] = useState(1);
+  const { groupId, memberId } = useParams();
+  const { user } = useAuth();
+  const [selectedChat, setSelectedChat] = useState(groupId || memberId || null);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isMember, setIsMember] = useState(null);
+  const [usePolling, setUsePolling] = useState(false);
+  const wsRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
-  const conversations = [
-    {
-      id: 1,
-      name: "Advanced Calculus Masters",
-      type: "group",
-      lastMessage: "Thanks for sharing those practice problems!",
-      lastTime: "2:45 PM",
-      unread: 3,
-      avatar: "",
-      online: true,
-      pinned: true
-    },
-    {
-      id: 2,
-      name: "Alex Chen",
-      type: "direct",
-      lastMessage: "Can you help me with the integration by parts problem?",
-      lastTime: "1:30 PM",
-      unread: 1,
-      avatar: "",
-      online: true,
-      pinned: false
-    },
-    {
-      id: 3,
-      name: "Quantum Physics Explorers",
-      type: "group",
-      lastMessage: "Meeting scheduled for tomorrow at 10 AM",
-      lastTime: "12:15 PM",
-      unread: 0,
-      avatar: "",
-      online: false,
-      pinned: false
-    },
-    {
-      id: 4,
-      name: "Sarah Johnson",
-      type: "direct",
-      lastMessage: "Great study session today!",
-      lastTime: "11:45 AM",
-      unread: 0,
-      avatar: "",
-      online: false,
-      pinned: false
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Fetch conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/group/my-groups", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (response.status === 401) {
+          throw new Error("Unauthorized: Please log in");
+        }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch groups: ${response.status} ${response.statusText}`);
+        }
+
+        const groups = await response.json();
+        const groupConvs = groups.map((group) => ({
+          id: group.groupId,
+          name: group.name,
+          type: "group",
+          lastMessage: group.lastMessage || "No messages yet",
+          lastTime: group.lastMessageTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unread: group.unreadCount || 0,
+          avatar: "",
+          online: true,
+          pinned: group.pinned || false,
+        }));
+
+        setConversations(groupConvs);
+        setLoading(false);
+      } catch (err) {
+        console.error("Fetch conversations error:", err);
+        setError(`Could not load conversations: ${err.message}`);
+        setLoading(false);
+        toast.error(`Failed to load conversations: ${err.message}`);
+      }
+    };
+
+    fetchConversations();
+  }, []);
+
+  // Check group membership
+  useEffect(() => {
+    if (!groupId || !user?.userId) {
+      setIsMember(memberId ? true : null);
+      return;
     }
-  ];
 
-  const messages = [
-    {
-      id: 1,
-      sender: "Alex Chen",
-      content: "Hey everyone! I just uploaded the practice problems for Chapter 12.",
-      time: "2:30 PM",
-      type: "text",
-      avatar: ""
-    },
-    {
-      id: 2,
-      sender: "Sarah Johnson",
-      content: "Perfect timing! I was just looking for more practice questions.",
-      time: "2:31 PM",
-      type: "text",
-      avatar: ""
-    },
-    {
-      id: 3,
-      sender: "You",
-      content: "Thanks Alex! These look really challenging. Should we tackle them together in our next session?",
-      time: "2:32 PM",
-      type: "text",
-      avatar: ""
-    },
-    {
-      id: 4,
-      sender: "Mike Rodriguez",
-      content: "Definitely! I'm free tomorrow at 3 PM. How about everyone else?",
-      time: "2:33 PM",
-      type: "text",
-      avatar: ""
-    },
-    {
-      id: 5,
-      sender: "Alex Chen",
-      content: "calculus_practice_ch12.pdf",
-      time: "2:34 PM",
-      type: "file",
-      avatar: ""
-    },
-    {
-      id: 6,
-      sender: "Sarah Johnson",
-      content: "I can make it at 3 PM tomorrow. Looking forward to it!",
-      time: "2:45 PM",
-      type: "text",
-      avatar: ""
+    const checkMembership = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/group/${groupId}`, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch group: ${response.status} ${response.statusText}`);
+        }
+
+        const groupData = await response.json();
+        const member = groupData.isMember !== undefined
+          ? groupData.isMember
+          : groupData.members?.some((m) => m._id === user?.userId) || false;
+        setIsMember(member);
+        if (!member) {
+          toast.error("You are not a member of this group.");
+        }
+      } catch (err) {
+        console.error("Membership check error:", err);
+        setError(`Could not verify group membership: ${err.message}`);
+        setIsMember(false);
+      }
+    };
+
+    checkMembership();
+  }, [groupId, user]);
+
+  // Fetch messages
+  useEffect(() => {
+    if (!selectedChat || isMember === false) return;
+
+    const fetchMessages = async () => {
+      try {
+        const endpoint = groupId
+          ? `http://localhost:8000/chat/${selectedChat}/messages`
+          : `http://localhost:8000/chat/direct/${selectedChat}`;
+        const response = await fetch(endpoint, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch messages: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        setMessages(data);
+        scrollToBottom();
+      } catch (err) {
+        console.error("Fetch messages error:", err);
+        setError(`Could not load messages: ${err.message}`);
+      }
+    };
+
+    fetchMessages();
+
+    // Polling fallback if WebSocket fails
+    let pollingInterval;
+    if (usePolling) {
+      pollingInterval = setInterval(fetchMessages, 5000);
     }
-  ];
 
-  const notifications = [
-    {
-      id: 1,
-      type: "reminder",
-      title: "Study Session Reminder",
-      message: "Advanced Calculus Masters - Starting in 30 minutes",
-      time: "3:00 PM Today"
-    },
-    {
-      id: 2,
-      type: "message",
-      title: "New Message from Alex Chen",
-      message: "Can you help me with the integration by parts problem?",
-      time: "1:30 PM"
-    },
-    {
-      id: 3,
-      type: "schedule",
-      title: "Session Scheduled",
-      message: "Quantum Physics Explorers - Tomorrow at 10:00 AM",
-      time: "12:15 PM"
+    return () => clearInterval(pollingInterval);
+  }, [selectedChat, isMember, groupId, usePolling]);
+
+  // Setup WebSocket with reconnection logic
+  const connectWebSocket = () => {
+    if (!user?.userId || isMember === false || !conversations.length || reconnectAttempts.current >= maxReconnectAttempts) {
+      if (reconnectAttempts.current >= maxReconnectAttempts) {
+        setUsePolling(true);
+        toast.warning("Switching to polling mode due to WebSocket failure.");
+      }
+      return;
     }
-  ];
 
-  const filteredConversations = conversations.filter(conv =>
+    const ws = new WebSocket(`ws://localhost:8000?userId=${user.userId}&groups=${conversations
+      .filter((conv) => conv.type === "group")
+      .map((conv) => conv.id)
+      .join(",")}`);
+    
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      reconnectAttempts.current = 0;
+      setUsePolling(false);
+      toast.success("Real-time messaging connected!");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const { type, data } = JSON.parse(event.data);
+        if (type === "message" && data.groupId === selectedChat) {
+          setMessages((prev) => [...prev, data]);
+          scrollToBottom();
+        }
+      } catch (err) {
+        console.error("WebSocket message parse error:", err);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      toast.error("WebSocket connection failed. Retrying...");
+    };
+
+    ws.onclose = (event) => {
+      console.log(`WebSocket disconnected: code=${event.code}, reason=${event.reason}`);
+      reconnectAttempts.current += 1;
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        setTimeout(connectWebSocket, 2000 * Math.pow(2, reconnectAttempts.current)); // Exponential backoff
+      } else {
+        setUsePolling(true);
+        toast.warning("Switching to polling mode due to WebSocket failure.");
+      }
+    };
+  };
+
+  useEffect(() => {
+    connectWebSocket();
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, [user, conversations, selectedChat, isMember]);
+
+  // Send message
+  const sendMessage = async () => {
+    if (!message.trim() || !selectedChat || isMember === false) return;
+
+    try {
+      const endpoint = groupId
+        ? `http://localhost:8000/chat/${selectedChat}/message`
+        : `http://localhost:8000/chat/direct/${selectedChat}`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: message }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
+      }
+
+      setMessage("");
+      scrollToBottom();
+      toast.success("Message sent!");
+    } catch (err) {
+      console.error("Send message error:", err);
+      toast.error(`Failed to send message: ${err.message}`);
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !selectedChat || isMember === false) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`http://localhost:8000/chat/${selectedChat}/upload`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload file: ${response.status} ${response.statusText}`);
+      }
+
+      const { fileId } = await response.json();
+      const messageResponse = await fetch(`http://localhost:8000/chat/${selectedChat}/message`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: file.name, file: fileId }),
+      });
+
+      if (!messageResponse.ok) {
+        throw new Error(`Failed to send file message: ${messageResponse.status} ${messageResponse.statusText}`);
+      }
+
+      scrollToBottom();
+      toast.success("File uploaded!");
+    } catch (err) {
+      console.error("File upload error:", err);
+      toast.error(`Failed to upload file: ${err.message}`);
+    }
+  };
+
+  const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedConversation = conversations.find(conv => conv.id === selectedChat);
+  const selectedConversation = conversations.find((conv) => conv.id === selectedChat);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p>Loading chats...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-red-500">{error}</p>
+          <Button asChild>
+            <Link to="/groups">View Groups</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-red-500">Please log in to view chats.</p>
+          <Button asChild>
+            <Link to="/login">Log In</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (groupId && isMember === false) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-red-500">You are not a member of this group.</p>
+          <Button asChild>
+            <Link to={`/group/${groupId}`}>Back to Group</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -173,7 +366,6 @@ export const Chat = () => {
             </div>
 
             <TabsContent value="chats" className="flex-1 flex flex-col mt-0">
-              {/* Search */}
               <div className="p-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -186,7 +378,6 @@ export const Chat = () => {
                 </div>
               </div>
 
-              {/* Conversations List */}
               <ScrollArea className="flex-1">
                 <div className="space-y-1 px-2">
                   {filteredConversations.map((conversation) => (
@@ -202,16 +393,9 @@ export const Chat = () => {
                           <Avatar className="w-10 h-10">
                             <AvatarImage src={conversation.avatar} />
                             <AvatarFallback>
-                              {conversation.type === 'group' ? (
-                                <Users className="w-5 h-5" />
-                              ) : (
-                                conversation.name.split(' ').map(n => n[0]).join('')
-                              )}
+                              <Users className="w-5 h-5" />
                             </AvatarFallback>
                           </Avatar>
-                          {conversation.online && conversation.type === 'direct' && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full" />
-                          )}
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -277,20 +461,15 @@ export const Chat = () => {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          {selectedConversation && (
+          {selectedConversation ? (
             <>
-              {/* Chat Header */}
               <div className="border-b bg-card/50 backdrop-blur-sm p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={selectedConversation.avatar} />
                       <AvatarFallback>
-                        {selectedConversation.type === 'group' ? (
-                          <Users className="w-5 h-5" />
-                        ) : (
-                          selectedConversation.name.split(' ').map(n => n[0]).join('')
-                        )}
+                        <Users className="w-5 h-5" />
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -298,35 +477,30 @@ export const Chat = () => {
                         {selectedConversation.name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {selectedConversation.type === 'group' ? 
-                          '4 members • 3 online' : 
-                          selectedConversation.online ? 'Online' : 'Last seen 2h ago'
-                        }
+                        {selectedConversation.memberCount} members
                       </p>
                     </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
-                      {conv.lastTime}
-                    </p>
-                    {conv.unread > 0 && (
-                      <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-                        {conv.unread}
-                      </span>
-                    )}
+                  
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon">
+                      <Bell className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Star className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-              ))}
-          </CardContent>
-        </Card>
-      </div>
+              </div>
 
-              {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                   {messages.map((message) => (
-                    <div key={message.id} className={`flex gap-3 ${message.sender === 'You' ? 'justify-end' : ''}`}>
-                      {message.sender !== 'You' && (
+                    <div key={message.id} className={`flex gap-3 ${message.senderId === user?.userId ? 'justify-end' : ''}`}>
+                      {message.senderId !== user?.userId && (
                         <Avatar className="w-8 h-8">
                           <AvatarImage src={message.avatar} />
                           <AvatarFallback className="text-xs">
@@ -335,20 +509,27 @@ export const Chat = () => {
                         </Avatar>
                       )}
                       
-                      <div className={`max-w-[70%] ${message.sender === 'You' ? 'order-first' : ''}`}>
-                        {message.sender !== 'You' && (
+                      <div className={`max-w-[70%] ${message.senderId === user?.userId ? 'order-first' : ''}`}>
+                        {message.senderId !== user?.userId && (
                           <p className="text-xs text-muted-foreground mb-1">{message.sender}</p>
                         )}
                         
                         <div className={`p-3 rounded-lg ${
-                          message.sender === 'You' 
+                          message.senderId === user?.userId 
                             ? 'bg-primary text-primary-foreground' 
                             : 'bg-accent'
                         }`}>
                           {message.type === 'file' ? (
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4" />
-                              <span className="text-sm">{message.content}</span>
+                              <a
+                                href={`http://localhost:8000/chat/file/${message.file}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm underline"
+                              >
+                                {message.content}
+                              </a>
                             </div>
                           ) : (
                             <p className="text-sm">{message.content}</p>
@@ -356,28 +537,31 @@ export const Chat = () => {
                         </div>
                         
                         <p className="text-xs text-muted-foreground mt-1">
-                          {message.time}
+                          {new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       
-                      {message.sender === 'You' && (
+                      {message.senderId === user?.userId && (
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="text-xs">You</AvatarFallback>
                         </Avatar>
                       )}
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
 
-              {/* Message Input */}
               <div className="border-t bg-card/50 backdrop-blur-sm p-4">
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Button variant="ghost" size="sm">
-                        <Paperclip className="w-4 h-4" />
-                      </Button>
+                      <label>
+                        <Button variant="ghost" size="sm" type="button">
+                          <Paperclip className="w-4 h-4" />
+                        </Button>
+                        <input type="file" className="hidden" onChange={handleFileUpload} />
+                      </label>
                       <Button variant="ghost" size="sm">
                         <Image className="w-4 h-4" />
                       </Button>
@@ -394,15 +578,16 @@ export const Chat = () => {
                         onKeyPress={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            setMessage("");
+                            sendMessage();
                           }
                         }}
                         className="flex-1"
+                        disabled={isMember === false}
                       />
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" disabled={isMember === false}>
                         <Smile className="w-4 h-4" />
                       </Button>
-                      <Button onClick={() => setMessage("")}>
+                      <Button onClick={sendMessage} disabled={isMember === false}>
                         <Send className="w-4 h-4" />
                       </Button>
                     </div>
@@ -410,11 +595,13 @@ export const Chat = () => {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-muted-foreground">Select a conversation to start chatting</p>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 };
-
-export default Chat;
