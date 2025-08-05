@@ -1,11 +1,35 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import axios from "axios";
+import Cookies from "js-cookie";
 
 export const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const baseUrl = "https://2896f11e75d1.ngrok-free.app"; // Updated to match Postman URL
+
+const handleLogin = async (e) => {
+  e.preventDefault();
+  try {
+    await axios.post(`${baseUrl}/auth/login`, {
+      email,
+      password,
+    });
+    navigate("/dashboard");
+  } catch (err) {
+    console.error("Login error:", err.response?.data || err.message);
+    setError(err.response?.data?.message || "Login failed. Please try again.");
+  }
+};
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 flex items-center justify-center py-12">
       <div className="container mx-auto px-4 max-w-md">
@@ -19,9 +43,18 @@ export const Login = () => {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="your.email@university.edu" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="your.email@university.edu"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -31,11 +64,17 @@ export const Login = () => {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" placeholder="Enter your password" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
 
-            <Button className="w-full text-lg py-6" asChild>
-              <Link to="/dashboard">Sign In</Link>
+            <Button className="w-full text-lg py-6" onClick={handleLogin}>
+              Sign In
             </Button>
 
             <div className="relative">
