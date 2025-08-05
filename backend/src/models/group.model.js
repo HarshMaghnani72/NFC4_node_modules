@@ -8,7 +8,8 @@ const groupSchema = new mongoose.Schema({
         end: { type: Date }
     },
     learningStyle: { type: String, enum: ['Visual', 'Auditory', 'Kinesthetic'] },
-    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    pendingInvites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 });
 
 module.exports = mongoose.model('Group', groupSchema);

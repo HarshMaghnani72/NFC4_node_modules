@@ -1,5 +1,8 @@
 const User = require('../models/user.model');
 const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.register = async (req, res) => {
     try {
@@ -45,7 +48,33 @@ exports.logout = (req, res) => {
     });
 };
 
-exports.googleLogin = (req, res) => {
-    // Placeholder for Google OAuth logic
-    res.status(501).json({ error: 'Google login not implemented' });
+exports.googleLogin = async (req, res) => {
+    try {
+        const { token } = req.body;
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        const { email, name } = payload;
+
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = new User({
+                name,
+                email,
+                password: 'google-auth', // No password needed for Google login
+                institute: '',
+                subjects: [],
+                language: 'English',
+                availability: {},
+                learningStyle: 'Visual'
+            });
+            await user.save();
+        }
+        req.session.userId = user._id;
+        res.json({ message: 'Google login successful', userId: user._id });
+    } catch (error) {
+        res.status(400).json({ error: 'Google login failed: ' + error.message });
+    }
 };

@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema({
     studyHours: { type: Number, default: 0 },
     tasksCompleted: { type: Number, default: 0 },
     xp: { type: Number, default: 0 },
-    acceptInvites: { type: Boolean, default: true }
+    acceptInvites: { type: Boolean, default: true },
+    badges: [{ type: String }],
+    ratings: [{ raterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, score: Number }]
 });
 
 module.exports = mongoose.model('User', userSchema);

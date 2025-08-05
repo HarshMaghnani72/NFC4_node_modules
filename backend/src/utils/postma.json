@@ -1,0 +1,699 @@
+{
+    "info": {
+        "name": "XCollection",
+        "description": "Postman collection for testing the Smart Study Group Matchmaking Platform APIs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"name\":\"John Doe\",\"email\":\"john@example.com\",\"password\":\"password123\",\"institute\":\"Example University\",\"subjects\":[\"Math\",\"Physics\"],\"language\":\"English\",\"availability\":{\"start\":\"2025-08-06T09:00:00Z\",\"end\":\"2025-08-06T17:00:00Z\"},\"learningStyle\":\"Visual\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/auth/register",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["auth", "register"]
+                        },
+                        "description": "Register a new user with profile details. Saves session cookie."
+                    }
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\":\"john@example.com\",\"password\":\"password123\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/auth/login",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["auth", "login"]
+                        },
+                        "description": "Login user and receive session cookie (connect.sid)."
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "http://localhost:3000/auth/logout",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["auth", "logout"]
+                        },
+                        "description": "Logout user and clear session cookie."
+                    }
+                },
+                {
+                    "name": "Google Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"token\":\"{{google_id_token}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/auth/google",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["auth", "google"]
+                        },
+                        "description": "Login using Google OAuth token. Replace {{google_id_token}} with a valid Google ID token."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "Get Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/user/profile",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["user", "profile"]
+                        },
+                        "description": "Retrieve user profile. Requires session cookie from Login."
+                    }
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"name\":\"John Smith\",\"subjects\":[\"Math\",\"Chemistry\"],\"learningStyle\":\"Auditory\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/user/profile",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["user", "profile"]
+                        },
+                        "description": "Update user profile details. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Report User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"reportedUserId\":\"{{user_id}}\",\"reason\":\"Inappropriate behavior\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/user/report",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["user", "report"]
+                        },
+                        "description": "Report a user for misuse. Replace {{user_id}} with a valid user ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Toggle Privacy",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"acceptInvites\":false}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/user/privacy",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["user", "privacy"]
+                        },
+                        "description": "Toggle group invite acceptance. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Group",
+            "item": [
+                {
+                    "name": "Get Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/group/matches",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "matches"]
+                        },
+                        "description": "Get AI-matched study groups based on compatibility. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Join Group",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/group/join",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "join"]
+                        },
+                        "description": "Join a study group. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Create Group",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"name\":\"Math Study Group\",\"subjects\":[\"Math\"],\"availability\":{\"start\":\"2025-08-06T09:00:00Z\",\"end\":\"2025-08-06T17:00:00Z\"},\"learningStyle\":\"Visual\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/group/create",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "create"]
+                        },
+                        "description": "Create a new study group. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Get Group Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/group/{{group_id}}",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "{{group_id}}"]
+                        },
+                        "description": "Get details of a specific group. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Approve Invite",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\",\"userId\":\"{{user_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/group/approve",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "approve"]
+                        },
+                        "description": "Approve a group invite. Replace {{group_id}} and {{user_id}} with valid IDs. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Decline Invite",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\",\"userId\":\"{{user_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/group/decline",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["group", "decline"]
+                        },
+                        "description": "Decline a group invite. Replace {{group_id}} and {{user_id}} with valid IDs. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Schedule",
+            "item": [
+                {
+                    "name": "Get Schedule",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/schedule",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["schedule"]
+                        },
+                        "description": "Retrieve user availability schedule. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Update Schedule",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"availability\":{\"start\":\"2025-08-06T10:00:00Z\",\"end\":\"2025-08-06T18:00:00Z\"}}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/schedule",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["schedule"]
+                        },
+                        "description": "Update user availability schedule. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Sync Google Calendar",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"accessToken\":\"{{google_access_token}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/schedule/google-sync",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["schedule", "google-sync"]
+                        },
+                        "description": "Sync availability with Google Calendar. Replace {{google_access_token}} with a valid Google access token. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Chat",
+            "item": [
+                {
+                    "name": "Send Message",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\",\"content\":\"Hello, let's study!\",\"file\":\"{{file_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/chat/send",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["chat", "send"]
+                        },
+                        "description": "Send a message to a group. Replace {{group_id}} and {{file_id}} with valid IDs. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Get Messages",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/chat/{{group_id}}",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["chat", "{{group_id}}"]
+                        },
+                        "description": "Retrieve messages for a group. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Get File",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/chat/file/{{file_id}}",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["chat", "file", "{{file_id}}"]
+                        },
+                        "description": "Retrieve a file by ID. Replace {{file_id}} with a valid file ID from GridFS. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Progress",
+            "item": [
+                {
+                    "name": "Get Progress",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/progress",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress"]
+                        },
+                        "description": "Retrieve user progress, including todos and badges. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Update Progress",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"studyHours\":2,\"tasksCompleted\":1,\"xp\":50}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/progress",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress"]
+                        },
+                        "description": "Update user progress (study hours, tasks, XP). Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Get Leaderboard",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/progress/leaderboard",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress", "leaderboard"]
+                        },
+                        "description": "Retrieve top 10 users by XP, including badges. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Rate Peer",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"peerId\":\"{{user_id}}\",\"rating\":4}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/progress/rate",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress", "rate"]
+                        },
+                        "description": "Rate a peer (1-5). Replace {{user_id}} with a valid user ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Add Todo",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\",\"task\":\"Complete chapter 3\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/progress/todo",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress", "todo"]
+                        },
+                        "description": "Add a shared todo to a group. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Complete Todo",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"todoId\":\"{{todo_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/progress/complete-todo",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["progress", "complete-todo"]
+                        },
+                        "description": "Mark a todo as completed. Replace {{todo_id}} with a valid todo ID. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Virtual Room",
+            "item": [
+                {
+                    "name": "Start Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"groupId\":\"{{group_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/virtualroom/start",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["virtualroom", "start"]
+                        },
+                        "description": "Start a virtual room session. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "End Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"roomId\":\"{{group_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/virtualroom/end",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["virtualroom", "end"]
+                        },
+                        "description": "End a virtual room session. Replace {{group_id}} with a valid group ID. Requires session cookie."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Notification",
+            "item": [
+                {
+                    "name": "Get Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:3000/notification",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["notification"]
+                        },
+                        "description": "Retrieve user notifications. Requires session cookie."
+                    }
+                },
+                {
+                    "name": "Mark Notification Read",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"notificationId\":\"{{notification_id}}\"}"
+                        },
+                        "url": {
+                            "raw": "http://localhost:3000/notification/read",
+                            "host": ["localhost"],
+                            "port": "3000",
+                            "path": ["notification", "read"]
+                        },
+                        "description": "Mark a notification as read. Replace {{notification_id}} with a valid notification ID. Requires session cookie."
+                    }
+                }
+            ]
+        }
+    ],
+    "auth": {
+        "type": "noauth"
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Run 'Login' or 'Register' first to obtain connect.sid session cookie.",
+                    "// Replace placeholders like {{user_id}}, {{group_id}}, {{todo_id}}, {{notification_id}}, {{file_id}}, {{google_id_token}}, and {{google_access_token}} with valid values."
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "user_id",
+            "value": "replace_with_valid_user_id"
+        },
+        {
+            "key": "group_id",
+            "value": "replace_with_valid_group_id"
+        },
+        {
+            "key": "todo_id",
+            "value": "replace_with_valid_todo_id"
+        },
+        {
+            "key": "notification_id",
+            "value": "replace_with_valid_notification_id"
+        },
+        {
+            "key": "file_id",
+            "value": "replace_with_valid_file_id"
+        },
+        {
+            "key": "google_id_token",
+            "value": "replace_with_valid_google_id_token"
+        },
+        {
+            "key": "google_access_token",
+            "value": "replace_with_valid_google_access_token"
+        }
+    ]
+}
