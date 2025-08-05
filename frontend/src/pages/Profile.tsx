@@ -36,12 +36,12 @@ export const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('http://localhost:8000/user/profile', {
+        const response = await fetch("http://localhost:8000/user/profile", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", 
+          credentials: "include",
         });
 
         if (!response.ok) {

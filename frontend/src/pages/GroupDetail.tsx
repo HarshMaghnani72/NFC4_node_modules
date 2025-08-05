@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Users, 
-  Clock, 
+import {
+  Users,
+  Clock,
   Star,
   Calendar,
   MessageCircle,
@@ -16,50 +16,107 @@ import {
   Settings,
   UserPlus,
   Award,
-  BookOpen,
-  Target,
-  CheckSquare
+  CheckSquare,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { useAuth } from "../context/AuthContext";
 
 export const GroupDetail = () => {
   const { id } = useParams();
-  const [isMember, setIsMember] = useState(true);
+  const { user } = useAuth();
+  const [groupData, setGroupData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const groupData = {
-    id: 1,
-    name: "Advanced Calculus Masters",
-    subject: "Mathematics",
-    description: "A dedicated group focused on mastering advanced calculus concepts including multivariable calculus, differential equations, and real analysis. We meet regularly to solve complex problems and prepare for exams together.",
-    members: [
-      { id: 1, name: "Alex Chen", avatar: "", role: "Leader", rating: 4.9, streak: 15 },
-      { id: 2, name: "Sarah Johnson", avatar: "", role: "Member", rating: 4.7, streak: 8 },
-      { id: 3, name: "Mike Rodriguez", avatar: "", role: "Member", rating: 4.8, streak: 12 },
-      { id: 4, name: "Emily Davis", avatar: "", role: "Member", rating: 4.6, streak: 5 }
-    ],
-    maxMembers: 6,
-    rating: 4.8,
-    learningStyle: "Visual",
-    timeSlots: ["Monday 3:00-5:00 PM", "Wednesday 3:00-5:00 PM", "Friday 2:00-4:00 PM"],
-    progress: 75,
-    goals: [
-      { id: 1, title: "Complete Chapter 12: Multiple Integrals", completed: true },
-      { id: 2, title: "Practice Midterm Exam", completed: true },
-      { id: 3, title: "Master Green's Theorem Applications", completed: false },
-      { id: 4, title: "Final Exam Preparation", completed: false }
-    ],
-    upcomingSessions: [
-      { date: "Today", time: "3:00 PM", topic: "Vector Calculus Review", type: "Study Session" },
-      { date: "Wednesday", time: "3:00 PM", topic: "Practice Problems", type: "Problem Solving" },
-      { date: "Friday", time: "2:00 PM", topic: "Exam Preparation", type: "Mock Exam" }
-    ],
-    studyStats: {
-      totalHours: 145,
-      weeklyGoal: 12,
-      currentWeek: 8,
-      sessionsCompleted: 24
-    }
-  };
+  useEffect(() => {
+    const fetchGroupDetails = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/group/${id}`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch group details");
+        }
+
+        const data = await response.json();
+        console.log("Fetched group data:", data);
+        console.log("Members array:", data.members);
+        setGroupData(data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching group details:", err.message);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchGroupDetails();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p>Loading group details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-red-500">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!groupData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p>No group data found.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-red-500">Please log in to view group details.</p>
+          <Button asChild>
+            <Link to="/login">Log In</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Debug logs for user and membership status
+  console.log("User object:", user);
+  console.log("isMember:", groupData.isMember);
+
+  // Determine membership by checking if user.userId is in members array
+  const isUserMember =
+    groupData.isMember !== undefined
+      ? groupData.isMember
+      : groupData.members?.some((member) => member._id === user?.userId) || false;
+
+  // Get user ID
+  const userId = user?.userId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,20 +131,24 @@ export const GroupDetail = () => {
                 {groupData.name}
               </h1>
               <div className="flex items-center gap-3">
-                <Badge variant="secondary" className="text-sm">{groupData.subject}</Badge>
-                <div className="flex items-center text-muted-foreground">
-                  <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
-                  {groupData.rating}
-                </div>
+                <Badge variant="secondary" className="text-sm">
+                  {groupData.subjects?.length > 0 ? groupData.subjects.join(", ") : "No subjects"}
+                </Badge>
+                {groupData.rating && (
+                  <div className="flex items-center text-muted-foreground">
+                    <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
+                    {groupData.rating}
+                  </div>
+                )}
                 <div className="flex items-center text-muted-foreground">
                   <Users className="w-4 h-4 mr-1" />
-                  {groupData.members.length}/{groupData.maxMembers}
+                  {groupData.memberCount || groupData.members?.length}/{groupData.maxMembers}
                 </div>
               </div>
             </div>
             
             <div className="flex gap-3">
-              {isMember ? (
+              {isUserMember ? (
                 <>
                   <Button asChild>
                     <Link to="/virtual-room">
@@ -134,126 +195,146 @@ export const GroupDetail = () => {
                   <CardContent>
                     <p className="text-muted-foreground mb-4">{groupData.description}</p>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">Advanced Level</Badge>
-                      <Badge variant="outline">Problem Solving</Badge>
-                      <Badge variant="outline">Exam Prep</Badge>
-                      <Badge variant="outline">{groupData.learningStyle} Learning</Badge>
+                      {groupData.learningStyle && (
+                        <Badge variant="outline">{groupData.learningStyle} Learning</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Upcoming Sessions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {groupData.upcomingSessions.map((session, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-accent/10 rounded-lg">
-                        <div>
-                          <h4 className="font-medium text-foreground">{session.topic}</h4>
-                          <p className="text-sm text-muted-foreground">{session.type}</p>
+                {groupData.upcomingSessions?.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upcoming Sessions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {groupData.upcomingSessions.map((session, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 bg-accent/10 rounded-lg">
+                          <div>
+                            <h4 className="font-medium text-foreground">{session.topic}</h4>
+                            <p className="text-sm text-muted-foreground">{session.type}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-foreground">{session.date}</p>
+                            <p className="text-sm text-muted-foreground">{session.time}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-foreground">{session.date}</p>
-                          <p className="text-sm text-muted-foreground">{session.time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="schedule" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Weekly Schedule</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {groupData.timeSlots.map((slot, index) => (
-                      <div key={index} className="flex items-center p-4 bg-card border rounded-lg">
-                        <Calendar className="w-5 h-5 text-primary mr-3" />
-                        <span className="text-foreground">{slot}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                {groupData.timeSlots?.length > 0 ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Weekly Schedule</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {groupData.timeSlots.map((slot, index) => (
+                        <div key={index} className="flex items-center p-4 bg-card border rounded-lg">
+                          <Calendar className="w-5 h-5 text-primary mr-3" />
+                          <span className="text-foreground">{slot}</span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <p>No schedule available.</p>
+                )}
               </TabsContent>
 
               <TabsContent value="progress" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Group Goals</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {groupData.goals.map((goal) => (
-                      <div key={goal.id} className="flex items-center gap-3">
-                        <CheckSquare className={`w-5 h-5 ${goal.completed ? 'text-green-500' : 'text-muted-foreground'}`} />
-                        <span className={`flex-1 ${goal.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                          {goal.title}
-                        </span>
-                        {goal.completed && <Badge variant="outline" className="text-green-600">Completed</Badge>}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                {groupData.goals?.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Group Goals</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {groupData.goals.map((goal) => (
+                        <div key={goal.id} className="flex items-center gap-3">
+                          <CheckSquare className={`w-5 h-5 ${goal.completed ? 'text-green-500' : 'text-muted-foreground'}`} />
+                          <span className={`flex-1 ${goal.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                            {goal.title}
+                          </span>
+                          {goal.completed && <Badge variant="outline" className="text-green-600">Completed</Badge>}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Study Statistics</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-primary/5 rounded-lg">
-                        <div className="text-2xl font-bold text-primary">{groupData.studyStats.totalHours}h</div>
-                        <div className="text-sm text-muted-foreground">Total Study Time</div>
+                {groupData.studyStats && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Study Statistics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {groupData.studyStats.totalHours && (
+                          <div className="text-center p-4 bg-primary/5 rounded-lg">
+                            <div className="text-2xl font-bold text-primary">{groupData.studyStats.totalHours}h</div>
+                            <div className="text-sm text-muted-foreground">Total Study Time</div>
+                          </div>
+                        )}
+                        {groupData.studyStats.sessionsCompleted && (
+                          <div className="text-center p-4 bg-accent/5 rounded-lg">
+                            <div className="text-2xl font-bold text-accent">{groupData.studyStats.sessionsCompleted}</div>
+                            <div className="text-sm text-muted-foreground">Sessions Completed</div>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-center p-4 bg-accent/5 rounded-lg">
-                        <div className="text-2xl font-bold text-accent">{groupData.studyStats.sessionsCompleted}</div>
-                        <div className="text-sm text-muted-foreground">Sessions Completed</div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Weekly Goal Progress</span>
-                        <span className="font-medium">{groupData.studyStats.currentWeek}/{groupData.studyStats.weeklyGoal}h</span>
-                      </div>
-                      <Progress value={(groupData.studyStats.currentWeek / groupData.studyStats.weeklyGoal) * 100} className="h-3" />
-                    </div>
-                  </CardContent>
-                </Card>
+                      {groupData.studyStats.weeklyGoal && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Weekly Goal Progress</span>
+                            <span className="font-medium">{groupData.studyStats.currentWeek}/{groupData.studyStats.weeklyGoal}h</span>
+                          </div>
+                          <Progress value={(groupData.studyStats.currentWeek / groupData.studyStats.weeklyGoal) * 100} className="h-3" />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="members" className="space-y-6">
                 <div className="grid gap-4">
-                  {groupData.members.map((member) => (
-                    <Card key={member.id}>
+                  {groupData.members?.map((member) => (
+                    <Card key={member._id}>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={member.avatar} />
+                            <AvatarImage src={member.avatar || ""} />
                             <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <h4 className="font-medium text-foreground">{member.name}</h4>
                             <div className="flex items-center gap-3 text-sm text-muted-foreground">
                               <Badge variant={member.role === 'Leader' ? 'default' : 'secondary'} className="text-xs">
-                                {member.role}
+                                {member.role || 'Member'}
                               </Badge>
-                              <div className="flex items-center">
-                                <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
-                                {member.rating}
-                              </div>
-                              <div className="flex items-center">
-                                <Award className="w-3 h-3 mr-1 text-primary" />
-                                {member.streak} day streak
-                              </div>
+                              {member.rating && (
+                                <div className="flex items-center">
+                                  <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
+                                  {member.rating}
+                                </div>
+                              )}
+                              {member.streak && (
+                                <div className="flex items-center">
+                                  <Award className="w-3 h-3 mr-1 text-primary" />
+                                  {member.streak} day streak
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <Button variant="outline" size="sm">
-                            <MessageCircle className="w-4 h-4 mr-1" />
-                            Message
-                          </Button>
+                          {user && member._id !== userId && (
+                            <Button variant="outline" size="sm">
+                              <MessageCircle className="w-4 h-4 mr-1" />
+                              Message
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -271,21 +352,27 @@ export const GroupDetail = () => {
                 <CardTitle className="text-lg">Group Stats</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Overall Progress</span>
-                  <span className="font-medium">{groupData.progress}%</span>
-                </div>
-                <Progress value={groupData.progress} className="h-2" />
+                {groupData.progress && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Overall Progress</span>
+                      <span className="font-medium">{groupData.progress}%</span>
+                    </div>
+                    <Progress value={groupData.progress} className="h-2" />
+                  </>
+                )}
                 
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Active Members</span>
-                    <span className="font-medium">{groupData.members.length}</span>
+                    <span className="font-medium">{groupData.memberCount || groupData.members?.length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Study Sessions</span>
-                    <span className="font-medium">3/week</span>
-                  </div>
+                  {groupData.activityScore !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Activity Score</span>
+                      <span className="font-medium">{groupData.activityScore}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Learning Style</span>
                     <span className="font-medium">{groupData.learningStyle}</span>
@@ -322,25 +409,21 @@ export const GroupDetail = () => {
             </Card>
 
             {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <p className="font-medium text-foreground">Sarah completed Chapter 12 quiz</p>
-                  <p className="text-muted-foreground">2 hours ago</p>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium text-foreground">New study session scheduled</p>
-                  <p className="text-muted-foreground">1 day ago</p>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium text-foreground">Mike shared helpful resources</p>
-                  <p className="text-muted-foreground">2 days ago</p>
-                </div>
-              </CardContent>
-            </Card>
+            {groupData.recentActivity?.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {groupData.recentActivity.map((activity, index) => (
+                    <div key={index} className="text-sm">
+                      <p className="font-medium text-foreground">{activity.description}</p>
+                      <p className="text-muted-foreground">{activity.timestamp}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
