@@ -25,7 +25,7 @@ exports.sendMessage = async (req, res) => {
             file: fileUrl
         });
         await message.save();
-        await require('./notification.controller').sendNotification(
+        await require('./notification.handlers').sendNotification(
             (await require('../models/group.model').findById(groupId)).members,
             `New message in group`
         );

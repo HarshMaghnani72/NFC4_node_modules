@@ -112,7 +112,7 @@ exports.joinGroup = async (req, res) => {
         if (!group.members.includes(req.session.userId)) {
             group.members.push(req.session.userId);
             await group.save();
-            await require('./notification.controller').sendNotification(
+            await require('./notification.handlers').sendNotification(
                 group.members.filter(id => id.toString() !== req.session.userId),
                 `New member ${user.name} joined group ${group.name}`
             );
@@ -165,7 +165,7 @@ exports.approveInvite = async (req, res) => {
         group.pendingInvites = group.pendingInvites.filter(id => id.toString() !== userId);
         group.members.push(userId);
         await group.save();
-        await require('./notification.controller').sendNotification(
+        await require('./notification.handlers').sendNotification(
             [userId],
             `Your invite to group ${group.name} was approved`
         );
@@ -183,7 +183,7 @@ exports.declineInvite = async (req, res) => {
         if (!group) return res.status(404).json({ error: 'Group not found' });
         group.pendingInvites = group.pendingInvites.filter(id => id.toString() !== userId);
         await group.save();
-        await require('./notification.controller').sendNotification(
+        await require('./notification.handlers').sendNotification(
             [userId],
             `Your invite to group ${group.name} was declined`
         );
@@ -230,7 +230,7 @@ exports.autonomousGroupFormation = async (req, res) => {
                 });
                 await group.save();
                 createdGroups.push(group._id);
-                await require('./notification.controller').sendNotification(
+                await require('./notification.handlers').sendNotification(
                     cluster,
                     `You have been added to a new auto-formed group: ${group.name}`
                 );
