@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Target, Clock, TrendingUp, BookOpen, Users, Flame, Gift } from "lucide-react";
+import { Trophy, Target, Clock, TrendingUp, BookOpen, Users, Flame, Gift, Crown } from 'lucide-react';
 import { Navbar } from "@/components/Navbar";
 import { Coupon } from "@/types/coupon";
 import { Task } from "@/types/task";
+import { ProgressUpdatePayload, WeeklyStats, DailyStudyHours } from "@/types/progress";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
@@ -38,22 +39,22 @@ export default function ProgressPage() {
   const navigate = useNavigate();
   const userId = user?.userId;
 
-  const weeklyStats = {
-    studyHours: 28,
-    goal: 40,
-    sessions: 12,
-    groups: 3,
-  };
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
+    studyHours: 0,
+    goal: 0,
+    sessions: 0,
+    groups: 0,
+  });
 
-  const dailyStudyHours = [
-    { day: "Mon", hours: 5 },
-    { day: "Tue", hours: 6 },
-    { day: "Wed", hours: 4 },
-    { day: "Thu", hours: 7 },
-    { day: "Fri", hours: 3 },
-    { day: "Sat", hours: 8 },
-    { day: "Sun", hours: 5 },
-  ];
+  const [dailyStudyHours, setDailyStudyHours] = useState<DailyStudyHours>([
+    { day: "Mon", hours: 0 },
+    { day: "Tue", hours: 0 },
+    { day: "Wed", hours: 0 },
+    { day: "Thu", hours: 0 },
+    { day: "Fri", hours: 0 },
+    { day: "Sat", hours: 0 },
+    { day: "Sun", hours: 0 },
+  ]);
 
   const subjects = [
     { name: "Mathematics", hours: 15, progress: 75, color: "bg-blue-500" },
@@ -68,7 +69,7 @@ export default function ProgressPage() {
       description: "Get 50% off on your next Redfox purchase!",
       brand: "Redfox",
       value: "50% OFF",
-      image: "/images/redfox-50-off.png",
+      image: "/placeholder.svg?height=80&width=80",
       redeemed: false,
       expiryDate: "Dec 31, 2025",
     },
@@ -78,7 +79,7 @@ export default function ProgressPage() {
       description: "Enjoy free shipping on all Redfox orders.",
       brand: "Redfox",
       value: "FREE SHIPPING",
-      image: "/images/redfox-free-shipping.png",
+      image: "/placeholder.svg?height=80&width=80",
       redeemed: true,
       redeemedDate: "Jul 20, 2025",
     },
@@ -88,7 +89,7 @@ export default function ProgressPage() {
       description: "Flat ₹100 discount on orders above ₹500.",
       brand: "Redfox",
       value: "₹100 OFF",
-      image: "/images/redfox-100-off.png",
+      image: "/placeholder.svg?height=80&width=80",
       redeemed: false,
       expiryDate: "Nov 15, 2025",
     },
@@ -118,6 +119,14 @@ export default function ProgressPage() {
     { action: "Completed milestone", milestone: "Integration Methods", time: "2 days ago" },
   ];
 
+  const topUsers = [
+    { id: 1, name: "Alice Johnson", level: 15, xp: 1800, rank: 1 },
+    { id: 2, name: "Bob Williams", level: 14, xp: 1650, rank: 2 },
+    { id: 3, name: "Charlie Brown", level: 13, xp: 1500, rank: 3 },
+    { id: 4, name: "Diana Miller", level: 12, xp: 1300, rank: 4 },
+    { id: 5, name: "Eve Davis", level: 11, xp: 1100, rank: 5 },
+  ];
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
   const [newDueDate, setNewDueDate] = useState("Today");
@@ -126,39 +135,82 @@ export default function ProgressPage() {
   const [activeTab, setActiveTab] = useState<"all" | "public" | "private" | "group">("all");
   const [groups, setGroups] = useState<{ _id: string; name: string }[]>([]);
 
-  // Fetch tasks and groups on mount
+  // Function to update user progress via API
+  const updateUserProgress = async (payload: ProgressUpdatePayload) => {
+    if (!userId || !isAuthenticated) {
+      toast.error("Please log in to update progress");
+      navigate("/login");
+      return;
+    }
+    try {
+      const response = await fetch("http://localhost:8000/progress", { // Using the URL from Postman image
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(`Failed to update progress: ${response.statusText}`);
+      const data = await response.json();
+      console.log("Progress updated:", data);
+      toast.success("Progress updated successfully!");
+      // Optionally refetch progress data to reflect changes immediately
+      fetchProgressData();
+    } catch (error) {
+      console.error("Failed to update progress:", error);
+      toast.error("Failed to update progress");
+    }
+  };
+
+  // Fetch tasks, groups, and progress data on mount
   useEffect(() => {
     if (!userId || !isAuthenticated) {
       return;
     }
-
-const fetchTasks = async () => {
-      try {
-        const response = await fetch(`/api/tasks?userId=${userId}`);
-        if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
-        const data = await response.json();
-        setTasks(data);
-      } catch (error) {
-        console.error('Failed to fetch tasks:', error);
-        toast.error('Failed to fetch tasks');
-      }
-    };
-
-const fetchGroups = async () => {
-      try {
-        const response = await fetch(`/api/groups?userId=${userId}`);
-        if (!response.ok) throw new Error(`Failed to fetch groups: ${response.statusText}`);
-        const data = await response.json();
-        setGroups(data);
-      } catch (error) {
-        console.error('Failed to fetch groups:', error);
-        toast.error('Failed to fetch groups');
-      }
-    };
-
+    fetchProgressData();
     fetchTasks();
     fetchGroups();
   }, [userId, isAuthenticated]);
+
+  const fetchProgressData = async () => {
+    try {
+      const response = await fetch(`/api/progress?userId=${userId}`); // Assuming this endpoint exists for GET
+      if (!response.ok) throw new Error(`Failed to fetch progress: ${response.statusText}`);
+      const data = await response.json();
+      setWeeklyStats({
+        studyHours: data.weeklyStats.studyHours,
+        goal: data.weeklyStats.goal,
+        sessions: data.weeklyStats.sessions,
+        groups: data.weeklyStats.groups,
+      });
+      setDailyStudyHours(data.dailyStudyHours);
+    } catch (error) {
+      console.error('Failed to fetch progress data:', error);
+      toast.error('Failed to fetch progress data');
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`/api/tasks?userId=${userId}`);
+      if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+      const data = await response.json();
+      setTasks(data);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      toast.error('Failed to fetch tasks');
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch(`/api/groups?userId=${userId}`);
+      if (!response.ok) throw new Error(`Failed to fetch groups: ${response.statusText}`);
+      const data = await response.json();
+      setGroups(data);
+    } catch (error) {
+      console.error('Failed to fetch groups:', error);
+      toast.error('Failed to fetch groups');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -170,10 +222,12 @@ const fetchGroups = async () => {
       </div>
     );
   }
-if (!isAuthenticated || !userId) {
+
+  if (!isAuthenticated || !userId) {
     navigate('/login');
     return null;
   }
+
   // Add New Task
   const addTask = async () => {
     if (!userId || !isAuthenticated) {
@@ -223,19 +277,32 @@ if (!isAuthenticated || !userId) {
     const task = tasks.find((t) => t._id === id);
     if (!task) return;
 
+    const newCompletedStatus = !task.completed;
+    const xpChange = newCompletedStatus ? 50 : -50; // Gain 50 XP on completion, lose 50 on uncompletion
+    const tasksCompletedChange = newCompletedStatus ? 1 : -1; // Increment/decrement tasks completed
+
     try {
-      const response = await fetch("/api/tasks", {
+      // Update task status
+      const taskResponse = await fetch("/api/tasks", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, completed: !task.completed }),
+        body: JSON.stringify({ id, completed: newCompletedStatus }),
       });
-      if (!response.ok) throw new Error(`Failed to update task: ${response.statusText}`);
-      const updatedTask = await response.json();
+      if (!taskResponse.ok) throw new Error(`Failed to update task: ${taskResponse.statusText}`);
+      const updatedTask = await taskResponse.json();
       setTasks(tasks.map((t) => (t._id === id ? updatedTask : t)));
       toast.success("Task updated successfully");
+
+      // Update user progress (studyHours, tasksCompleted, xp)
+      await updateUserProgress({
+        userId,
+        tasksCompleted: weeklyStats.sessions + tasksCompletedChange, // Assuming sessions track tasks completed
+        xp: weeklyStats.studyHours + xpChange, // Using studyHours as a proxy for current XP for simplicity
+      });
+
     } catch (error) {
-      console.error("Failed to update task:", error);
-      toast.error("Failed to update task");
+      console.error("Failed to update task or progress:", error);
+      toast.error("Failed to update task or progress");
     }
   };
 
@@ -269,22 +336,6 @@ if (!isAuthenticated || !userId) {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !userId) {
-    navigate("/login");
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -293,7 +344,6 @@ if (!isAuthenticated || !userId) {
           <h1 className="text-4xl font-extrabold text-foreground mb-2">Your Learning Progress</h1>
           <p className="text-lg text-muted-foreground">Track your study goals, achievements, and learning milestones</p>
         </div>
-
         {/* Weekly Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 shadow-lg">
@@ -308,7 +358,6 @@ if (!isAuthenticated || !userId) {
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-r from-green-100 to-green-50 border-green-200 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -323,7 +372,6 @@ if (!isAuthenticated || !userId) {
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -336,7 +384,6 @@ if (!isAuthenticated || !userId) {
               </div>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-r from-orange-100 to-orange-50 border-orange-200 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -350,7 +397,6 @@ if (!isAuthenticated || !userId) {
             </CardContent>
           </Card>
         </div>
-
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
@@ -358,11 +404,10 @@ if (!isAuthenticated || !userId) {
               <TabsList className="grid w-full grid-cols-5 h-12">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="goals">Tasks</TabsTrigger>
-                <TabsTrigger value="coupons">Achievements</TabsTrigger>
+                <TabsTrigger value="coupons">Offers</TabsTrigger> {/* Changed from Achievements to Offers */}
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
                 <TabsTrigger value="group">Group</TabsTrigger>
               </TabsList>
-
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6 mt-4">
                 <Card className="shadow-lg">
@@ -382,7 +427,6 @@ if (!isAuthenticated || !userId) {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center text-2xl">
@@ -405,7 +449,6 @@ if (!isAuthenticated || !userId) {
                     ))}
                   </CardContent>
                 </Card>
-
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle className="text-2xl">Recent Activity</CardTitle>
@@ -428,7 +471,6 @@ if (!isAuthenticated || !userId) {
                   </CardContent>
                 </Card>
               </TabsContent>
-
               {/* Tasks Tab */}
               <TabsContent value="goals" className="space-y-6 mt-4">
                 <Card>
@@ -483,7 +525,6 @@ if (!isAuthenticated || !userId) {
                         <Button onClick={addTask} className="w-full">Add Task</Button>
                       </div>
                     </div>
-
                     <div className="flex gap-2 mb-4">
                       <Button
                         variant={activeTab === "all" ? "default" : "outline"}
@@ -514,7 +555,6 @@ if (!isAuthenticated || !userId) {
                         Group
                       </Button>
                     </div>
-
                     <div className="space-y-3">
                       {filteredTasks.length === 0 ? (
                         <p className="text-center text-muted-foreground py-4">No {activeTab} tasks found.</p>
@@ -554,8 +594,7 @@ if (!isAuthenticated || !userId) {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              {/* Achievements / Coupons */}
+              {/* Offers Tab (formerly Achievements / Coupons) */}
               <TabsContent value="coupons" className="space-y-6 mt-4">
                 <div className="grid gap-4">
                   {coupons.map((c) => (
@@ -590,7 +629,6 @@ if (!isAuthenticated || !userId) {
                   ))}
                 </div>
               </TabsContent>
-
               {/* Milestones */}
               <TabsContent value="milestones" className="space-y-6 mt-4">
                 {milestones.map((m, i) => (
@@ -628,7 +666,6 @@ if (!isAuthenticated || !userId) {
                   </Card>
                 ))}
               </TabsContent>
-
               {/* Group Tasks */}
               <TabsContent value="group" className="space-y-6 mt-4">
                 <Card>
@@ -689,7 +726,6 @@ if (!isAuthenticated || !userId) {
               </TabsContent>
             </Tabs>
           </div>
-
           {/* Sidebar */}
           <div className="space-y-6">
             <Card className="shadow-lg">
@@ -708,7 +744,6 @@ if (!isAuthenticated || !userId) {
                 <p className="text-xs text-center mt-2 text-muted-foreground">153 XP to next level</p>
               </CardContent>
             </Card>
-
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center text-xl">
@@ -721,6 +756,29 @@ if (!isAuthenticated || !userId) {
                   <div className="text-5xl font-bold text-orange-600">15</div>
                   <p className="text-muted-foreground">Days in a row!</p>
                 </div>
+              </CardContent>
+            </Card>
+            {/* Leaderboard Card */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center text-xl">
+                  <Crown className="w-6 h-6 mr-2 text-yellow-500" />
+                  Leaderboard
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {topUsers.map((user, index) => (
+                  <div key={user.id} className="flex items-center gap-3 p-2 bg-card rounded-lg">
+                    <Badge variant="secondary" className="min-w-[30px] justify-center">
+                      {user.rank}
+                    </Badge>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">Level {user.level} ({user.xp} XP)</p>
+                    </div>
+                    {index === 0 && <Crown className="w-5 h-5 text-yellow-500" />}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>

@@ -12,6 +12,8 @@ import { Groups } from "./pages/Groups";
 import { GroupDetail } from "./pages/GroupDetail";
 import { VirtualRoom } from "./pages/VirtualRoom";
 import { Profile } from "./pages/Profile";
+
+import  ProgressPage  from "./pages/Progress";
 import { Chat } from "./pages/Chat";
 import { ProtectedRoute } from "./pages/ProtectedRoute";
 import { AuthProvider } from "@/context/AuthContext"; // ✅ Import this
@@ -75,6 +77,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Chat />
+              </ProtectedRoute>
+            }
+          />
+             <Route
+            path="/progress"
+            element={
+              <ProtectedRoute>
+                <ProgressPage />
               </ProtectedRoute>
             }
           />
