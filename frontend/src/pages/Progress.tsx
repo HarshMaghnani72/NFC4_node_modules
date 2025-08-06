@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress as ProgressBar } from "@/components/ui/progress";
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Target, Clock, TrendingUp, BookOpen, Users, Flame, Gift, Crown } from 'lucide-react';
+import { Trophy, Target, Clock, TrendingUp, BookOpen, Users, Flame, Gift, Crown, Play, Pause, RotateCcw } from 'lucide-react';
 import { Navbar } from "@/components/Navbar";
 import { Coupon } from "@/types/coupon";
 import { Task } from "@/types/task";
@@ -32,6 +32,14 @@ const WeeklyStudyChart = ({ data }: { data: { day: string; hours: number }[] }) 
       ))}
     </div>
   );
+};
+
+// Utility function to format seconds into HH:MM:SS
+const formatSeconds = (totalSeconds: number): string => {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
 export default function ProgressPage() {
@@ -135,15 +143,22 @@ export default function ProgressPage() {
   const [activeTab, setActiveTab] = useState<"all" | "public" | "private" | "group">("all");
   const [groups, setGroups] = useState<{ _id: string; name: string }[]>([]);
 
+  // Study Timer States
+  const [studyTimerRunning, setStudyTimerRunning] = useState(false);
+  const [studyTimerSeconds, setStudyTimerSeconds] = useState(0); // Seconds for current unsaved session
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentStudySecondsRef = useRef(0); // To hold the latest seconds for cleanup
+  const lastSavedSecondsRef = useRef(0); // To track seconds since last save
+
   // Function to update user progress via API
   const updateUserProgress = async (payload: ProgressUpdatePayload) => {
     if (!userId || !isAuthenticated) {
-      toast.error("Please log in to update progress");
-      navigate("/login");
+      // No toast or navigate here, as this is an internal call
+      console.warn("User not authenticated for progress update. Skipping API call.");
       return;
     }
     try {
-      const response = await fetch("http://localhost:8000/progress", { // Using the URL from Postman image
+      const response = await fetch("http://localhost:8000/progress", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -151,16 +166,84 @@ export default function ProgressPage() {
       if (!response.ok) throw new Error(`Failed to update progress: ${response.statusText}`);
       const data = await response.json();
       console.log("Progress updated:", data);
-      toast.success("Progress updated successfully!");
-      // Optionally refetch progress data to reflect changes immediately
-      fetchProgressData();
+      // No toast here to avoid spamming for periodic saves
+      fetchProgressData(); // Refetch progress data to reflect changes immediately
     } catch (error) {
       console.error("Failed to update progress:", error);
-      toast.error("Failed to update progress");
+      toast.error("Failed to update progress automatically.");
     }
   };
 
-  // Fetch tasks, groups, and progress data on mount
+  // Function to save current study session hours to backend
+  const saveStudyHoursToBackend = async (secondsToSave: number) => {
+    if (secondsToSave === 0) return;
+
+    const hoursToSave = secondsToSave / 3600; // Convert seconds to hours
+    await updateUserProgress({
+      userId,
+      studyHours: hoursToSave, // Send the increment
+    });
+    lastSavedSecondsRef.current = 0; // Reset counter after saving
+  };
+
+  // Timer useEffect for automatic start and periodic saving
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      setStudyTimerRunning(true); // Auto-start timer when authenticated
+    }
+
+    if (studyTimerRunning) {
+      timerIntervalRef.current = setInterval(() => {
+        setStudyTimerSeconds(prev => {
+          const newSeconds = prev + 1;
+          currentStudySecondsRef.current = newSeconds; // Update ref for cleanup
+          lastSavedSecondsRef.current = lastSavedSecondsRef.current + 1;
+
+          // Periodically save every 30 seconds
+          if (lastSavedSecondsRef.current >= 30) {
+            saveStudyHoursToBackend(lastSavedSecondsRef.current);
+          }
+          return newSeconds;
+        });
+      }, 1000); // Update every second
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    }
+
+    // Cleanup function to save hours when component unmounts or timer stops unexpectedly
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (currentStudySecondsRef.current > 0) {
+        saveStudyHoursToBackend(currentStudySecondsRef.current);
+      }
+    };
+  }, [studyTimerRunning, isAuthenticated, userId]); // Dependencies: `studyTimerRunning` and auth status
+
+  // Timer control functions
+  const startStudyTimer = () => {
+    setStudyTimerRunning(true);
+    toast.info("Study timer started!");
+  };
+
+  const pauseStudyTimer = () => {
+    setStudyTimerRunning(false);
+    saveStudyHoursToBackend(studyTimerSeconds); // Save current session seconds
+    setStudyTimerSeconds(0); // Reset seconds for next session
+    toast.info("Study timer paused and hours saved.");
+  };
+
+  const resetStudyTimer = () => {
+    setStudyTimerRunning(false);
+    saveStudyHoursToBackend(studyTimerSeconds); // Save any accumulated hours before resetting
+    setStudyTimerSeconds(0);
+    toast.info("Study timer reset and hours saved.");
+  };
+
+  // Initial data fetch on mount
   useEffect(() => {
     if (!userId || !isAuthenticated) {
       return;
@@ -176,12 +259,12 @@ export default function ProgressPage() {
       if (!response.ok) throw new Error(`Failed to fetch progress: ${response.statusText}`);
       const data = await response.json();
       setWeeklyStats({
-        studyHours: data.weeklyStats.studyHours,
-        goal: data.weeklyStats.goal,
-        sessions: data.weeklyStats.sessions,
-        groups: data.weeklyStats.groups,
+        studyHours: data.studyHours || 0,
+        goal: data.goal || 40,
+        sessions: data.tasksCompleted || 0,
+        groups: data.groups || 0,
       });
-      setDailyStudyHours(data.dailyStudyHours);
+      // setDailyStudyHours(data.dailyStudyHours || []); // Uncomment if daily data comes from backend
     } catch (error) {
       console.error('Failed to fetch progress data:', error);
       toast.error('Failed to fetch progress data');
@@ -190,7 +273,7 @@ export default function ProgressPage() {
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`/api/tasks?userId=${userId}`);
+      const response = await fetch(`/api/tasks?userId=${userId}`); // Assuming this endpoint exists for GET
       if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.statusText}`);
       const data = await response.json();
       setTasks(data);
@@ -202,7 +285,7 @@ export default function ProgressPage() {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch(`/api/groups?userId=${userId}`);
+      const response = await fetch(`/api/groups?userId=${userId}`); // Assuming this endpoint exists for GET
       if (!response.ok) throw new Error(`Failed to fetch groups: ${response.statusText}`);
       const data = await response.json();
       setGroups(data);
@@ -211,22 +294,6 @@ export default function ProgressPage() {
       toast.error('Failed to fetch groups');
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !userId) {
-    navigate('/login');
-    return null;
-  }
 
   // Add New Task
   const addTask = async () => {
@@ -239,25 +306,31 @@ export default function ProgressPage() {
       toast.error("Task cannot be empty");
       return;
     }
+
+    // Payload for backend's addTodo function
+    const payload: { groupId?: string | null; task: string } = {
+      task: newTask,
+    };
+    // Only include groupId if visibility is public and a group is selected
+    if (newVisibility === "public" && newGroupId) {
+      payload.groupId = newGroupId;
+    } else {
+      payload.groupId = null; // Explicitly set to null for private tasks if backend expects it
+    }
+
     try {
-      const response = await fetch("/api/tasks", {
+      // Call the specific backend endpoint for adding a todo
+      const response = await fetch("http://localhost:8000/progress/todo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          task: newTask,
-          completed: false,
-          dueDate: newDueDate,
-          visibility: newVisibility,
-          by: "You",
-          groupId: newVisibility === "public" ? newGroupId : null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`Failed to add task: ${response.statusText}`);
-      const newTaskData = await response.json();
-      setTasks([...tasks, newTaskData]);
+      
+      // Backend might return the new task or a message. Refetch tasks to ensure UI consistency.
+      fetchTasks();
       setNewTask("");
-      setNewDueDate("Today");
+      setNewDueDate("Today"); // These are frontend-only for now
       setNewVisibility("private");
       setNewGroupId(null);
       toast.success("Task added successfully");
@@ -278,31 +351,27 @@ export default function ProgressPage() {
     if (!task) return;
 
     const newCompletedStatus = !task.completed;
-    const xpChange = newCompletedStatus ? 50 : -50; // Gain 50 XP on completion, lose 50 on uncompletion
-    const tasksCompletedChange = newCompletedStatus ? 1 : -1; // Increment/decrement tasks completed
 
     try {
-      // Update task status
-      const taskResponse = await fetch("/api/tasks", {
-        method: "PUT",
+      // Call the specific backend endpoint for completing/uncompleting a todo
+      // This assumes your backend has an endpoint like /progress/todo/complete
+      // and that your completeTodo function is updated to accept 'completed' status.
+      const response = await fetch("http://localhost:8000/progress/todo/complete", {
+        method: "PUT", // Using PUT as it's an update operation
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, completed: newCompletedStatus }),
+        body: JSON.stringify({ todoId: id, completed: newCompletedStatus }),
       });
-      if (!taskResponse.ok) throw new Error(`Failed to update task: ${taskResponse.statusText}`);
-      const updatedTask = await taskResponse.json();
-      setTasks(tasks.map((t) => (t._id === id ? updatedTask : t)));
+      if (!response.ok) throw new Error(`Failed to update task: ${response.statusText}`);
+      
+      // Optimistically update UI
+      setTasks(tasks.map((t) => (t._id === id ? { ...t, completed: newCompletedStatus } : t)));
       toast.success("Task updated successfully");
 
-      // Update user progress (studyHours, tasksCompleted, xp)
-      await updateUserProgress({
-        userId,
-        tasksCompleted: weeklyStats.sessions + tasksCompletedChange, // Assuming sessions track tasks completed
-        xp: weeklyStats.studyHours + xpChange, // Using studyHours as a proxy for current XP for simplicity
-      });
-
+      // Refetch progress data to update tasksCompleted and XP from backend
+      fetchProgressData();
     } catch (error) {
-      console.error("Failed to update task or progress:", error);
-      toast.error("Failed to update task or progress");
+      console.error("Failed to update task:", error);
+      toast.error("Failed to update task");
     }
   };
 
@@ -356,6 +425,26 @@ export default function ProgressPage() {
                 </div>
                 <Clock className="w-9 h-9 text-primary" />
               </div>
+              {/* Study Timer integrated here */}
+              <div className="mt-4 pt-4 border-t border-primary/10">
+                <div className="text-4xl font-bold tabular-nums text-center text-foreground">
+                  {formatSeconds(studyTimerSeconds)}
+                </div>
+                <div className="flex justify-center gap-2 mt-3">
+                  {!studyTimerRunning ? (
+                    <Button onClick={startStudyTimer} size="sm">
+                      <Play className="w-4 h-4 mr-1" /> Start
+                    </Button>
+                  ) : (
+                    <Button onClick={pauseStudyTimer} size="sm" variant="outline">
+                      <Pause className="w-4 h-4 mr-1" /> Pause
+                    </Button>
+                  )}
+                  <Button onClick={resetStudyTimer} size="sm" variant="secondary" disabled={studyTimerSeconds === 0}>
+                    <RotateCcw className="w-4 h-4 mr-1" /> Reset
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-r from-green-100 to-green-50 border-green-200 shadow-lg">
@@ -404,7 +493,7 @@ export default function ProgressPage() {
               <TabsList className="grid w-full grid-cols-5 h-12">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="goals">Tasks</TabsTrigger>
-                <TabsTrigger value="coupons">Offers</TabsTrigger> {/* Changed from Achievements to Offers */}
+                <TabsTrigger value="coupons">Offers</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
                 <TabsTrigger value="group">Group</TabsTrigger>
               </TabsList>

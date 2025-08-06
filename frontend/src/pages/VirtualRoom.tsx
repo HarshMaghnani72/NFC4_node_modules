@@ -15,12 +15,9 @@ import {
   MicOff,
   ScreenShare,
   StopCircle,
-  Download,
   Play,
   Pause,
   RotateCcw,
-  Maximize,
-  Minimize,
   Send,
   PenTool,
   Eraser,
@@ -29,11 +26,9 @@ import {
   Type,
   Users,
   Wifi,
-  WifiOff,
-  Phone,
   PhoneOff,
+  AlertCircle,
 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +37,12 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+const Navbar = () => (
+  <div className="bg-card border-b p-4">
+    <h1 className="text-xl font-bold">StudyRoom</h1>
+  </div>
+);
+
 export const VirtualRoom = () => {
   // Connection and Session State
   const [isConnected, setIsConnected] = useState(false);
@@ -49,14 +50,15 @@ export const VirtualRoom = () => {
   const [sessionId, setSessionId] = useState("");
   const [userName, setUserName] = useState("");
   const [isHost, setIsHost] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
 
   // Media State
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [remoteScreenShare, setRemoteScreenShare] = useState(null);
   const [localStream, setLocalStream] = useState(null);
-  const [remoteStreams, setRemoteStreams] = useState(new Map());
+  const [screenStream, setScreenStream] = useState(null);
+  const [mediaError, setMediaError] = useState("");
 
   // Timer State
   const [timerMinutes, setTimerMinutes] = useState(25);
@@ -70,29 +72,22 @@ export const VirtualRoom = () => {
   const [penSize, setPenSize] = useState(2);
   const [eraserSize, setEraserSize] = useState(10);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [textInput, setTextInput] = useState("");
-  const [textPosition, setTextPosition] = useState(null);
 
   // App State
   const [todos, setTodos] = useState([]);
   const [todoInput, setTodoInput] = useState("");
-  const [studyHours, setStudyHours] = useState(0);
   const [xpPoints, setXpPoints] = useState(100);
   const [showNotification, setShowNotification] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [showCalendar, setShowCalendar] = useState(false); // New state for calendar modal
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Refs
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
-  const whiteboardRef = useRef(null);
   const localVideoRef = useRef(null);
   const screenShareVideoRef = useRef(null);
   const socketRef = useRef(null);
-  const peerConnectionsRef = useRef(new Map());
-  const remoteVideosRef = useRef(new Map());
 
   const whiteboardTools = [
     { id: "pen", icon: PenTool, name: "Pen" },
@@ -102,63 +97,56 @@ export const VirtualRoom = () => {
     { id: "text", icon: Type, name: "Text" },
   ];
 
-  // WebRTC Configuration
-  const iceServers = {
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-    ],
-  };
-
-  // Initialize Socket Connection
+  // Initialize Mock Socket
   useEffect(() => {
-    const SOCKET_SERVER = "ws://localhost:8080";
-
-    try {
-      socketRef.current = {
-        emit: (event, data) => {
-          console.log(`Socket emit: ${event}`, data);
+    socketRef.current = {
+      emit: (event, data) => {
+        console.log(`Socket emit: ${event}`, data);
+        // Simulate successful connection
+        if (event === "join-session") {
           setTimeout(() => {
-            if (event === "join-session") {
-              setIsConnected(true);
-              setConnectedUsers([
-                { id: "user1", name: "You", isHost: true },
-                { id: "user2", name: "Study Partner", isHost: false },
-              ]);
-            }
+            setConnectedUsers([
+              { id: "user1", name: data.userName, isHost: data.isHost },
+              { id: "user2", name: "Study Partner", isHost: false },
+            ]);
           }, 1000);
-        },
-        on: (event, callback) => {
-          console.log(`Socket listener: ${event}`);
-        },
-        disconnect: () => {
-          console.log("Socket disconnected");
-        },
-      };
-    } catch (error) {
-      console.error("Socket connection failed:", error);
-    }
+        }
+      },
+      on: (event, callback) => {
+        console.log(`Socket listener registered: ${event}`);
+      },
+      disconnect: () => {
+        console.log("Socket disconnected");
+      },
+    };
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      // Cleanup all streams on unmount
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [localStream, screenStream]);
 
   // Initialize Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      // Set canvas size properly
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      
       const context = canvas.getContext("2d");
       context.lineCap = "round";
       context.strokeStyle = penColor;
       context.lineWidth = penSize;
       contextRef.current = context;
     }
-  }, []);
+  }, [penColor, penSize]);
 
   // Update canvas context when tool changes
   useEffect(() => {
@@ -176,130 +164,283 @@ export const VirtualRoom = () => {
     }
   }, [selectedTool, penColor, penSize, eraserSize]);
 
-  // Join Session
+  // Enhanced getUserMedia with better error handling
+  const getUserMedia = async () => {
+    try {
+      setMediaError("");
+      console.log("Requesting user media...");
+      
+      const constraints = {
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 30 }
+        },
+        audio: true
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("Stream obtained:", stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      
+      return stream;
+    } catch (error) {
+      console.error("getUserMedia error:", error);
+      let errorMessage = "Failed to access camera/microphone. ";
+      
+      switch (error.name) {
+        case "NotAllowedError":
+          errorMessage += "Please allow camera and microphone permissions and refresh the page.";
+          break;
+        case "NotFoundError":
+          errorMessage += "No camera or microphone found.";
+          break;
+        case "NotReadableError":
+          errorMessage += "Camera or microphone is being used by another application.";
+          break;
+        case "OverconstrainedError":
+          errorMessage += "Camera constraints could not be satisfied.";
+          break;
+        default:
+          errorMessage += error.message;
+      }
+      
+      setMediaError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Enhanced getDisplayMedia with better error handling
+  const getDisplayMedia = async () => {
+    try {
+      console.log("Requesting screen share...");
+      
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          mediaSource: "screen",
+          width: { max: 1920 },
+          height: { max: 1080 },
+          frameRate: { max: 30 }
+        },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+      
+      console.log("Screen stream obtained:", stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      return stream;
+    } catch (error) {
+      console.error("getDisplayMedia error:", error);
+      let errorMessage = "Screen sharing failed. ";
+      
+      switch (error.name) {
+        case "NotAllowedError":
+          errorMessage += "Screen sharing permission denied.";
+          break;
+        case "NotFoundError":
+          errorMessage += "No screen source available.";
+          break;
+        default:
+          errorMessage += error.message;
+      }
+      
+      setMediaError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Enhanced video setup with proper error handling
+  const setupVideo = async (videoElement, stream, label) => {
+    if (!videoElement || !stream) {
+      console.warn(`Missing video element or stream for ${label}`);
+      console.log(`${label} video element`, videoElement);
+console.log(`${label} stream`, stream);
+
+      return false;
+    }
+
+    try {
+      console.log(`Setting up ${label} video...`);
+      
+      // Clear any existing stream
+      if (videoElement.srcObject) {
+        const oldStream = videoElement.srcObject;
+        oldStream.getTracks().forEach(track => track.stop());
+      }
+      
+      videoElement.srcObject = stream;
+      videoElement.muted = label.includes("local"); // Mute local video to prevent feedback
+      
+      // Wait for metadata to load
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Video load timeout")), 10000);
+        
+        videoElement.onloadedmetadata = () => {
+          clearTimeout(timeout);
+          console.log(`${label} video metadata loaded`);
+          resolve();
+        };
+        
+        videoElement.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error(`${label} video element error`));
+        };
+      });
+
+      // Attempt to play
+      await videoElement.play();
+      console.log(`${label} video playing successfully`);
+      return true;
+      
+    } catch (error) {
+      console.error(`${label} video setup error:`, error);
+      setMediaError(`Failed to play ${label} video: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Join Session with improved error handling
   const joinSession = async () => {
     if (!userName.trim()) {
-      alert("Please enter your name");
+      setConnectionError("Please enter your name");
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideoOn,
-        audio: isAudioOn,
-      });
-
+      setConnectionError("");
+      setMediaError("");
+      
+      console.log("Starting join session...");
+      
+      // Get user media first
+      const stream = await getUserMedia();
       setLocalStream(stream);
+      console.log("Local Stream Tracks", stream.getTracks());
+
+      // Setup local video
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+        const success = await setupVideo(localVideoRef.current, stream, "local");
+        if (!success) {
+          console.warn("Local video setup failed, but continuing...");
+        }
       }
 
+      // Simulate room joining
       const roomId = sessionId || `room_${Date.now()}`;
       setSessionId(roomId);
-
+      setIsHost(!sessionId);
+      
       socketRef.current?.emit("join-session", {
         sessionId: roomId,
         userName: userName,
         isHost: !sessionId,
       });
-
-      setIsHost(!sessionId);
+      
+      setIsConnected(true);
+      console.log("Successfully joined session");
+      
     } catch (error) {
-      console.error("Failed to join session:", error);
-      alert("Failed to access camera/microphone. Please check permissions.");
+      console.error("Join session failed:", error);
+      setConnectionError(error.message);
     }
   };
 
   // Leave Session
   const leaveSession = () => {
+    console.log("Leaving session...");
+    
+    // Stop all tracks
     if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped ${track.kind} track`);
+      });
       setLocalStream(null);
     }
+    
+    if (screenStream) {
+      screenStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped screen ${track.kind} track`);
+      });
+      setScreenStream(null);
 
-    peerConnectionsRef.current.forEach((pc) => pc.close());
-    peerConnectionsRef.current.clear();
+    }
 
+    // Clear video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (screenShareVideoRef.current) {
+      screenShareVideoRef.current.srcObject = null;
+    }
+
+    // Reset state
     setIsConnected(false);
     setConnectedUsers([]);
-    setRemoteStreams(new Map());
     setIsScreenSharing(false);
-    setRemoteScreenShare(null);
+    setMediaError("");
+    setConnectionError("");
 
     socketRef.current?.emit("leave-session", { sessionId });
   };
 
-  // Screen Share Implementation
+  // Enhanced Screen Share
   const toggleScreenShare = async () => {
     try {
+      setMediaError("");
+      
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            mediaSource: "screen",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            frameRate: { ideal: 30 },
-          },
-          audio: true,
-        });
-
-        setIsScreenSharing(true);
-
+        console.log("Starting screen share...");
+        
+        const stream = await getDisplayMedia();
+        setScreenStream(stream);
+        
+        // Setup screen share video
         if (screenShareVideoRef.current) {
-          screenShareVideoRef.current.srcObject = screenStream;
-        }
-
-        socketRef.current?.emit("screen-share-start", {
-          sessionId,
-          streamId: screenStream.id,
-        });
-
-        peerConnectionsRef.current.forEach(async (pc, userId) => {
-          const videoTrack = screenStream.getVideoTracks()[0];
-          const sender = pc
-            .getSenders()
-            .find((s) => s.track && s.track.kind === "video");
-          if (sender) {
-            await sender.replaceTrack(videoTrack);
+          const success = await setupVideo(screenShareVideoRef.current, stream, "screen share");
+          if (success) {
+            setIsScreenSharing(true);
+            
+            // Handle screen share end
+            stream.getVideoTracks()[0].addEventListener("ended", () => {
+              console.log("Screen share ended by user");
+              stopScreenShare();
+            });
+            
+            socketRef.current?.emit("screen-share-start", {
+              sessionId,
+              streamId: stream.id,
+            });
           }
-        });
-
-        screenStream.getVideoTracks()[0].addEventListener("ended", () => {
-          stopScreenShare();
-        });
+        }
       } else {
         stopScreenShare();
       }
     } catch (error) {
-      console.error("Screen share error:", error);
-      alert("Screen sharing failed. Please try again.");
+      console.error("Screen share toggle error:", error);
+      // Error message already set by getDisplayMedia
     }
   };
 
-  const stopScreenShare = async () => {
-    setIsScreenSharing(false);
+  const stopScreenShare = () => {
+    console.log("Stopping screen share...");
+    
+    if (screenStream) {
+      screenStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped screen share ${track.kind} track`);
+      });
+      setScreenStream(null);
+    }
 
     if (screenShareVideoRef.current) {
-      const stream = screenShareVideoRef.current.srcObject;
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        screenShareVideoRef.current.srcObject = null;
-      }
+      screenShareVideoRef.current.srcObject = null;
     }
 
+    setIsScreenSharing(false);
     socketRef.current?.emit("screen-share-stop", { sessionId });
-
-    if (localStream && isVideoOn) {
-      peerConnectionsRef.current.forEach(async (pc, userId) => {
-        const videoTrack = localStream.getVideoTracks()[0];
-        const sender = pc
-          .getSenders()
-          .find((s) => s.track && s.track.kind === "video");
-        if (sender && videoTrack) {
-          await sender.replaceTrack(videoTrack);
-        }
-      });
-    }
   };
 
   // Toggle Video/Audio
@@ -309,6 +450,11 @@ export const VirtualRoom = () => {
       if (videoTrack) {
         videoTrack.enabled = !isVideoOn;
         setIsVideoOn(!isVideoOn);
+        console.log(`Video ${!isVideoOn ? 'enabled' : 'disabled'}`);
+        socketRef.current?.emit("video-toggle", {
+          sessionId,
+          enabled: !isVideoOn,
+        });
       }
     }
   };
@@ -319,6 +465,11 @@ export const VirtualRoom = () => {
       if (audioTrack) {
         audioTrack.enabled = !isAudioOn;
         setIsAudioOn(!isAudioOn);
+        console.log(`Audio ${!isAudioOn ? 'enabled' : 'disabled'}`);
+        socketRef.current?.emit("audio-toggle", {
+          sessionId,
+          enabled: !isAudioOn,
+        });
       }
     }
   };
@@ -327,11 +478,7 @@ export const VirtualRoom = () => {
   const startDrawing = ({ nativeEvent }) => {
     const { offsetX, offsetY } = nativeEvent;
     const context = contextRef.current;
-
-    if (selectedTool === "text") {
-      setTextPosition({ x: offsetX, y: offsetY });
-      return;
-    }
+    if (!context) return;
 
     context.beginPath();
     context.moveTo(offsetX, offsetY);
@@ -353,6 +500,7 @@ export const VirtualRoom = () => {
     if (!isDrawing) return;
     const { offsetX, offsetY } = nativeEvent;
     const context = contextRef.current;
+    if (!context) return;
 
     if (selectedTool === "pen" || selectedTool === "eraser") {
       context.lineTo(offsetX, offsetY);
@@ -404,7 +552,6 @@ export const VirtualRoom = () => {
           setTimerSeconds(59);
         }
       }, 1000);
-      setStudyHours((prev) => prev + 1 / 3600);
     } else if (timerMinutes === 0 && timerSeconds === 0 && isTimerRunning) {
       setIsTimerRunning(false);
       setXpPoints((prev) => prev + 10);
@@ -454,6 +601,18 @@ export const VirtualRoom = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {connectionError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  {connectionError}
+                </div>
+              )}
+              {mediaError && (
+                <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded text-sm">
+                  <AlertCircle className="w-4 h-4 mr-2 inline" />
+                  {mediaError}
+                </div>
+              )}
               <Input
                 placeholder="Enter your name"
                 value={userName}
@@ -476,6 +635,9 @@ export const VirtualRoom = () => {
                 {sessionId
                   ? "Joining existing session"
                   : "Creating new session"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Make sure to allow camera and microphone permissions when prompted
               </div>
             </CardContent>
           </Card>
@@ -564,6 +726,12 @@ export const VirtualRoom = () => {
                 </Button>
               </div>
             </div>
+            {mediaError && (
+              <div className="mt-2 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded text-sm">
+                <AlertCircle className="w-4 h-4 mr-2 inline" />
+                {mediaError}
+              </div>
+            )}
           </div>
 
           {/* Video Grid */}
@@ -571,13 +739,22 @@ export const VirtualRoom = () => {
             <div className="grid grid-cols-2 gap-4 h-48">
               {/* Local Video */}
               <div className="relative bg-gray-800 rounded-lg overflow-hidden">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
+             <video
+  ref={localVideoRef}
+  autoPlay
+  muted
+  playsInline
+  className="w-full h-full object-cover"
+  hidden={!localStream}
+/>
+<video
+  ref={screenShareVideoRef}
+  autoPlay
+  muted
+  playsInline
+  className="w-full h-full object-contain"
+  hidden={!screenStream}
+/>
                 <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
                   You {isHost && "(Host)"}
                 </div>
@@ -586,28 +763,37 @@ export const VirtualRoom = () => {
                     <VideoOff className="w-8 h-8 text-gray-400" />
                   </div>
                 )}
+                {!localStream && (
+                  <div className="absolute inset-0 bg-gray-700 flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <Video className="w-8 h-8 mx-auto mb-2" />
+                      <p className="text-sm">Camera not available</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Remote Video or Screen Share */}
+              {/* Screen Share or Partner Video */}
               <div className="relative bg-gray-800 rounded-lg overflow-hidden">
                 {isScreenSharing ? (
-                  <video
-                    ref={screenShareVideoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
+                  <>
+                    <video
+                      ref={screenShareVideoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                    <div className="absolute bottom-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
+                      Your Screen Share
+                    </div>
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <div className="text-center text-gray-400">
                       <Users className="w-8 h-8 mx-auto mb-2" />
                       <p className="text-sm">Waiting for study partner...</p>
+                      <p className="text-xs mt-1">Or share your screen to get started</p>
                     </div>
-                  </div>
-                )}
-                {isScreenSharing && (
-                  <div className="absolute bottom-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
-                    Screen Share Active
                   </div>
                 )}
               </div>
@@ -616,10 +802,7 @@ export const VirtualRoom = () => {
 
           {/* Whiteboard Area */}
           <div className="flex-1 flex">
-            <div
-              ref={whiteboardRef}
-              className="flex-1 flex flex-col bg-white dark:bg-gray-900 border-r"
-            >
+            <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 border-r">
               {/* Whiteboard Toolbar */}
               <div className="border-b bg-card/80 backdrop-blur-sm p-3">
                 <div className="flex items-center justify-between">
@@ -675,10 +858,12 @@ export const VirtualRoom = () => {
                     onClick={() => {
                       const canvas = canvasRef.current;
                       const context = contextRef.current;
-                      context.clearRect(0, 0, canvas.width, canvas.height);
-                      socketRef.current?.emit("whiteboard-clear", {
-                        sessionId,
-                      });
+                      if (canvas && context) {
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                        socketRef.current?.emit("whiteboard-clear", {
+                          sessionId,
+                        });
+                      }
                     }}
                   >
                     Clear
@@ -848,16 +1033,12 @@ export const VirtualRoom = () => {
           <DialogHeader>
             <DialogTitle>Schedule Calendar</DialogTitle>
           </DialogHeader>
-          <div className="w-full h-[600px]">
-            <iframe
-              src="https://calendar.google.com/calendar/embed?src=your_calendar_id%40group.calendar.google.com&ctz=UTC"
-              style={{ border: 0 }}
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              scrolling="no"
-              title="Google Calendar"
-            ></iframe>
+          <div className="w-full h-[600px] bg-gray-100 rounded flex items-center justify-center">
+            <div className="text-center text-gray-600">
+              <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <p>Calendar integration would be implemented here</p>
+              <p className="text-sm mt-2">Connect with Google Calendar API</p>
+            </div>
           </div>
           <DialogClose asChild>
             <Button variant="outline">Close</Button>
@@ -866,7 +1047,7 @@ export const VirtualRoom = () => {
       </Dialog>
 
       {showNotification && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
+        <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50">
           <div className="flex items-center">
             <Trophy className="w-5 h-5 mr-2" />
             Timer completed! +10 XP earned

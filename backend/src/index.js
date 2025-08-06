@@ -23,26 +23,35 @@ const server = http.createServer(app);
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// CORS configuration
 app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
+// Session configuration
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "your-secret-key",
+    secret: process.env.SESSION_SECRET || 'your-secret-key', // Use a strong secret in production
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      ttl: 24 * 60 * 60, // Session TTL: 24 hours
+    }),
     cookie: {
-        httpOnly: true,
-        secure: false,
-        samesite:'none',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production with HTTPS
+      sameSite: 'none', // Allow cross-site usage, adjust based on your needs
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
 
 // Routes
 app.use('/auth', authRouter);
@@ -53,25 +62,45 @@ app.use('/chat', chatRouter);
 app.use('/progress', progressRouter);
 app.use('/virtualroom', virtualRoomRouter);
 app.use('/notification', notificationRouter);
+
+// WebSocket setup
 setupWebSocketServer(server);
 
-
-// Basic error handling middleware
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack.red);
-  res.status(500).json({ error: "Internal server error" });
+  console.error('Error:'.red, err.stack);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+  });
 });
 
-const PORT = process.env.PORT || 3000;
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+const PORT = process.env.PORT || 8000; // Changed to 8000 to avoid conflict with frontend
 
 connect()
   .then(() => {
-    console.log("Connected to database".cyan);
-    app.listen(PORT, () => {
-      console.log(`Listening to port ${PORT}`.yellow);
+    console.log('Connected to database'.cyan);
+    server.listen(PORT, () => {
+      console.log(`Server listening on port ${PORT}`.yellow);
     });
   })
   .catch((err) => {
-    console.error("Database connection failed:".red, err);
+    console.error('Database connection failed:'.red, err);
     process.exit(1);
   });
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:'.red, err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:'.red, promise, 'reason:', reason);
+  process.exit(1);
+});

@@ -23,6 +23,22 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 
+interface Group {
+  _id: string;
+  name: string;
+  subject: string;
+  description: string;
+  memberCount?: number;
+  maxMembers?: number;
+  rating?: number;
+  learningStyle?: string;
+  timeSlot?: string;
+  days?: string[];
+  matchScore?: number;
+  tags?: string[];
+  isMember?: boolean;
+}
+
 export const Groups = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [groupName, setGroupName] = useState("");
@@ -32,9 +48,9 @@ export const Groups = () => {
   const [learningStyle, setLearningStyle] = useState("");
 
   function useUserGroups() {
-    const [groups, setGroups] = useState([]);
+    const [groups, setGroups] = useState<Group[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
       const fetchGroups = async () => {
@@ -49,7 +65,10 @@ export const Groups = () => {
           }
 
           const data = await response.json();
-          setGroups(data);
+          const formattedGroups = Array.isArray(data)
+            ? data.map((group: Group) => ({ ...group, isMember: group.isMember || false }))
+            : [];
+          setGroups(formattedGroups);
         } catch (err) {
           setError(err.message);
         } finally {
@@ -109,9 +128,42 @@ export const Groups = () => {
     }
   };
 
+  const handleJoinGroup = async (groupId) => {
+    try {
+      console.log('Attempting to join group with ID:', groupId);
+      const response = await fetch(`http://localhost:8000/group/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ groupId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to join group.");
+      }
+
+      const data = await response.json();
+      console.log("Join request response:", data);
+      alert("Join request sent successfully!");
+
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group._id === groupId ? { ...group, isMember: true } : group
+        )
+      );
+    } catch (error) {
+      console.error("Error joining group:", error.message);
+      alert(`Failed to join group: ${error.message}`);
+    }
+  };
+
+  // Update mock data to include your real group ID
   const recommendedGroups = [
     {
-      id: 1,
+      _id: "68923507e60bba591b9ff908", // Your real group ID
       name: "Linear Algebra Warriors",
       subject: "Mathematics",
       description: "Conquering matrices and vector spaces together.",
@@ -125,13 +177,12 @@ export const Groups = () => {
       tags: ["Peer Learning", "Practice Problems", "Group Study"],
       isMember: false,
     },
-    // ... other recommended groups
   ];
 
   const allGroups = [
     ...recommendedGroups,
     {
-      id: 4,
+      _id: "507f1f77bcf86cd799439012",
       name: "Spanish Conversation Club",
       subject: "Languages",
       description: "Practice Spanish conversation in a supportive environment.",
@@ -145,7 +196,6 @@ export const Groups = () => {
       tags: ["Conversation", "Cultural Exchange", "Beginner Friendly"],
       isMember: false,
     },
-    // ... other groups
   ];
 
   const filteredGroups = allGroups.filter(
@@ -156,19 +206,16 @@ export const Groups = () => {
 
   const filteredMyGroups = groups.filter(
     (group) =>
-      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      group.subjects.some((subject) =>
-        subject.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      group.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (group.subjects &&
+        Array.isArray(group.subjects) &&
+        group.subjects.some((s) =>
+          s.toLowerCase().includes(searchTerm.toLowerCase())
+        )) ||
+      group.subject?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const GroupCard = ({
-    group,
-    isRecommended = false,
-  }: {
-    group: any;
-    isRecommended?: boolean;
-  }) => (
+  const GroupCard = ({ group, isRecommended = false }) => (
     <Card
       className={`hover:shadow-lg transition-shadow ${
         isRecommended ? "ring-2 ring-primary/20" : ""
@@ -179,7 +226,7 @@ export const Groups = () => {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h3 className="font-semibold text-foreground text-lg">
-                {group.name}
+                {group.name || "Unnamed Group"}
               </h3>
               {isRecommended && (
                 <Badge className="bg-primary/10 text-primary border-primary/20">
@@ -189,10 +236,12 @@ export const Groups = () => {
               )}
             </div>
             <Badge variant="secondary" className="mb-2">
-              {Array.isArray(group.subjects) ? group.subjects.join(", ") || "No subjects" : group.subject}
+              {Array.isArray(group.subjects)
+                ? group.subjects.join(", ") || "No subjects"
+                : group.subject || "No subject"}
             </Badge>
             <p className="text-muted-foreground text-sm mb-3">
-              {group.description}
+              {group.description || "No description"}
             </p>
           </div>
         </div>
@@ -202,7 +251,7 @@ export const Groups = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center text-muted-foreground">
                 <Users className="w-4 h-4 mr-1" />
-                {group.memberCount}/{group.maxMembers}
+                {group.memberCount || 0}/{group.maxMembers || "N/A"}
               </div>
               {group.rating && (
                 <div className="flex items-center text-muted-foreground">
@@ -211,7 +260,7 @@ export const Groups = () => {
                 </div>
               )}
             </div>
-            <Badge variant="outline">{group.learningStyle}</Badge>
+            <Badge variant="outline">{group.learningStyle || "N/A"}</Badge>
           </div>
 
           {group.timeSlot && group.days && (
@@ -223,7 +272,7 @@ export const Groups = () => {
 
           {group.tags && group.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {group.tags.map((tag: string, index: number) => (
+              {group.tags.map((tag, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {tag}
                 </Badge>
@@ -233,7 +282,11 @@ export const Groups = () => {
 
           <div className="flex gap-2 pt-2">
             {!group.isMember && (
-              <Button className="flex-1">
+              <Button
+                className="flex-1"
+                onClick={() => handleJoinGroup(group._id)}
+                disabled={group.isJoining}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Request to Join
               </Button>
@@ -261,7 +314,6 @@ export const Groups = () => {
           </p>
         </div>
 
-        {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -272,7 +324,7 @@ export const Groups = () => {
               className="pl-10"
             />
           </div>
-          <Select>
+          <Select onValueChange={setSubject}>
             <SelectTrigger className="w-full md:w-48">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
@@ -284,7 +336,7 @@ export const Groups = () => {
               <SelectItem value="computer-science">Computer Science</SelectItem>
             </SelectContent>
           </Select>
-          <Select>
+          <Select onValueChange={setLearningStyle}>
             <SelectTrigger className="w-full md:w-48">
               <SelectValue placeholder="Learning Style" />
             </SelectTrigger>
@@ -325,7 +377,7 @@ export const Groups = () => {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendedGroups.map((group) => (
-                <GroupCard key={group.id} group={group} isRecommended />
+                <GroupCard key={group._id} group={group} isRecommended />
               ))}
             </div>
           </TabsContent>
@@ -333,7 +385,7 @@ export const Groups = () => {
           <TabsContent value="all" className="space-y-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredGroups.map((group) => (
-                <GroupCard key={group.id} group={group} />
+                <GroupCard key={group._id} group={group} />
               ))}
             </div>
           </TabsContent>
@@ -347,7 +399,7 @@ export const Groups = () => {
             {!loading && !error && filteredMyGroups.length > 0 && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMyGroups.map((group) => (
-                  <GroupCard key={group.groupId} group={group} />
+                  <GroupCard key={group._id || `group-${group.name}-${Date.now()}`} group={group} />
                 ))}
               </div>
             )}
@@ -369,7 +421,7 @@ export const Groups = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Subject</label>
-                  <Select onValueChange={setSubject}>
+                  <Select onValueChange={setSubject} value={subject}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select primary subject" />
                     </SelectTrigger>
@@ -394,7 +446,7 @@ export const Groups = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Max Members</label>
-                    <Select onValueChange={setMaxMembers}>
+                    <Select onValueChange={setMaxMembers} value={maxMembers}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select size" />
                       </SelectTrigger>
@@ -407,10 +459,11 @@ export const Groups = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Learning Style
-                    </label>
-                    <Select onValueChange={setLearningStyle}>
+                    <label className="text-sm font-medium">Learning Style</label>
+                    <Select
+                      onValueChange={setLearningStyle}
+                      value={learningStyle}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Primary style" />
                       </SelectTrigger>

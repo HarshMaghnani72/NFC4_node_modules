@@ -1,22 +1,23 @@
-import express from 'express';
-import Group from '../models/Group.js';
-import { connectToDatabase } from '../lib/mongodb.js';
+// backend/src/models/Group.js
+const mongoose = require('mongoose');
 
-const router = express.Router();
-
-router.get('/', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { userId } = req.query;
-    if (!userId || userId === 'undefined') {
-      return res.status(400).json({ error: 'Valid userId is required' });
-    }
-    const groups = await Group.find({ members: userId });
-    res.status(200).json(groups);
-  } catch (error) {
-    console.error('Error fetching groups:', error);
-    res.status(500).json({ error: 'Failed to fetch groups' });
-  }
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  dueDate: { type: Date, required: true },
+  type: { type: String, required: true },
 });
 
-export default router;
+const groupSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subject: { type: String, required: true },
+  description: { type: String, required: true },
+  memberCount: { type: Number, default: 0 },
+  maxMembers: { type: Number, required: true },
+  learningStyle: { type: String, required: true },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
+  pendingMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
+  tasks: [taskSchema],
+});
+
+const Group = mongoose.model('Group', groupSchema);
+module.exports = Group;

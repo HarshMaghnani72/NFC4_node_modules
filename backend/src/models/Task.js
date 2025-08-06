@@ -1,14 +1,23 @@
-import mongoose from "mongoose";
+// models/Group.js or relevant model file
+import mongoose from 'mongoose';
 
-const TaskSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  task: { type: String, required: true },
-  completed: { type: Boolean, default: false },
-  dueDate: { type: String, default: "Today" },
-  visibility: { type: String, enum: ["public", "private"], default: "private" },
-  by: { type: String, default: "You" },
-  groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", default: null },
-  createdAt: { type: Date, default: Date.now },
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  dueDate: { type: Date, required: true },
+  type: { type: String, required: true },
 });
 
-export default mongoose.models.Task || mongoose.model("Task", TaskSchema);
+const groupSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subject: { type: String, required: true },
+  description: { type: String, required: true },
+  memberCount: { type: Number, default: 0 },
+  maxMembers: { type: Number, required: true },
+  learningStyle: { type: String, required: true },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
+  pendingMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
+  tasks: [taskSchema], // Array of task objects
+});
+
+const Group = mongoose.model('Group', groupSchema);
+export default Group;
