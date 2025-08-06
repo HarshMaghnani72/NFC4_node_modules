@@ -16,7 +16,7 @@ const notificationRouter = require('./routes/notification.routes');
 const virtualRoomRouter = require('./routes/virtualroom.routes');
 const { setupWebSocketServer } = require('./handlers/websocket_handler');
 const http = require('http');
-
+const agenticAIRoutes = require('./routes/agenticAI');
 const app = express();
 const server = http.createServer(app);
 
@@ -53,6 +53,7 @@ app.use('/chat', chatRouter);
 app.use('/progress', progressRouter);
 app.use('/virtualroom', virtualRoomRouter);
 app.use('/notification', notificationRouter);
+app.use('/api/agentic-ai', agenticAIRoutes);
 setupWebSocketServer(server);
 
 
