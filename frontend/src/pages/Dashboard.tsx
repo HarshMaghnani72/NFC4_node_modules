@@ -54,13 +54,16 @@ export const Dashboard = () => {
     useEffect(() => {
       const fetchGroups = async () => {
         try {
-          const response = await fetch("http://localhost:8000/group/my-groups", {
-            method: "GET",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
+          const response = await fetch(
+            "http://localhost:8000/group/my-groups",
+            {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
 
           if (!response.ok) {
             throw new Error("Failed to fetch groups");
@@ -133,8 +136,8 @@ export const Dashboard = () => {
               : "Welcome back!"}
           </h1>
           <p className="text-muted-foreground">
-            Ready to continue your learning journey? You have{" "}
-            {groups.length} study sessions today.
+            Ready to continue your learning journey? You have {groups.length}{" "}
+            study sessions today.
           </p>
         </div>
 
@@ -269,7 +272,10 @@ export const Dashboard = () => {
                                     {group.progress}%
                                   </span>
                                 </div>
-                                <Progress value={group.progress} className="h-2" />
+                                <Progress
+                                  value={group.progress}
+                                  className="h-2"
+                                />
                               </div>
                             )}
 
@@ -314,25 +320,26 @@ export const Dashboard = () => {
                 {groups.length === 0 && !loading && !error && (
                   <p>No upcoming sessions. Join a group to see sessions!</p>
                 )}
-                {groups.map((group, index) => (
-                  group.nextSession && (
-                    <Card key={index}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-medium text-foreground">
-                              {group.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Study Session
-                            </p>
+                {groups.map(
+                  (group, index) =>
+                    group.nextSession && (
+                      <Card key={index}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-medium text-foreground">
+                                {group.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Study Session
+                              </p>
+                            </div>
+                            <Badge variant="outline">{group.nextSession}</Badge>
                           </div>
-                          <Badge variant="outline">{group.nextSession}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                ))}
+                        </CardContent>
+                      </Card>
+                    )
+                )}
               </TabsContent>
 
               <TabsContent value="progress" className="space-y-4">

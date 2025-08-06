@@ -34,6 +34,13 @@ import {
   PhoneOff,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 export const VirtualRoom = () => {
   // Connection and Session State
@@ -75,6 +82,7 @@ export const VirtualRoom = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [showCalendar, setShowCalendar] = useState(false); // New state for calendar modal
 
   // Refs
   const canvasRef = useRef(null);
@@ -104,15 +112,12 @@ export const VirtualRoom = () => {
 
   // Initialize Socket Connection
   useEffect(() => {
-    // In a real app, replace with your server URL
     const SOCKET_SERVER = "ws://localhost:8080";
 
     try {
       socketRef.current = {
-        // Mock socket for demo - replace with actual socket.io
         emit: (event, data) => {
           console.log(`Socket emit: ${event}`, data);
-          // Simulate responses for demo
           setTimeout(() => {
             if (event === "join-session") {
               setIsConnected(true);
@@ -179,7 +184,6 @@ export const VirtualRoom = () => {
     }
 
     try {
-      // Initialize local media
       const stream = await navigator.mediaDevices.getUserMedia({
         video: isVideoOn,
         audio: isAudioOn,
@@ -190,14 +194,13 @@ export const VirtualRoom = () => {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Join session via socket
       const roomId = sessionId || `room_${Date.now()}`;
       setSessionId(roomId);
 
       socketRef.current?.emit("join-session", {
         sessionId: roomId,
         userName: userName,
-        isHost: !sessionId, // Host if creating new session
+        isHost: !sessionId,
       });
 
       setIsHost(!sessionId);
@@ -209,17 +212,14 @@ export const VirtualRoom = () => {
 
   // Leave Session
   const leaveSession = () => {
-    // Stop all streams
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
       setLocalStream(null);
     }
 
-    // Close all peer connections
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
 
-    // Reset state
     setIsConnected(false);
     setConnectedUsers([]);
     setRemoteStreams(new Map());
@@ -233,7 +233,6 @@ export const VirtualRoom = () => {
   const toggleScreenShare = async () => {
     try {
       if (!isScreenSharing) {
-        // Start screen sharing
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: {
             mediaSource: "screen",
@@ -250,13 +249,11 @@ export const VirtualRoom = () => {
           screenShareVideoRef.current.srcObject = screenStream;
         }
 
-        // Broadcast screen share to all peers
         socketRef.current?.emit("screen-share-start", {
           sessionId,
           streamId: screenStream.id,
         });
 
-        // Replace video track in all peer connections
         peerConnectionsRef.current.forEach(async (pc, userId) => {
           const videoTrack = screenStream.getVideoTracks()[0];
           const sender = pc
@@ -267,7 +264,6 @@ export const VirtualRoom = () => {
           }
         });
 
-        // Handle when user stops sharing
         screenStream.getVideoTracks()[0].addEventListener("ended", () => {
           stopScreenShare();
         });
@@ -291,10 +287,8 @@ export const VirtualRoom = () => {
       }
     }
 
-    // Notify peers
     socketRef.current?.emit("screen-share-stop", { sessionId });
 
-    // Switch back to camera
     if (localStream && isVideoOn) {
       peerConnectionsRef.current.forEach(async (pc, userId) => {
         const videoTrack = localStream.getVideoTracks()[0];
@@ -344,7 +338,6 @@ export const VirtualRoom = () => {
 
     if (selectedTool === "pen" || selectedTool === "eraser") {
       setIsDrawing(true);
-      // Broadcast drawing start
       socketRef.current?.emit("drawing-start", {
         sessionId,
         x: offsetX,
@@ -365,7 +358,6 @@ export const VirtualRoom = () => {
       context.lineTo(offsetX, offsetY);
       context.stroke();
 
-      // Broadcast drawing
       socketRef.current?.emit("drawing", {
         sessionId,
         x: offsetX,
@@ -561,6 +553,14 @@ export const VirtualRoom = () => {
                 <Button variant="destructive" size="sm" onClick={leaveSession}>
                   <PhoneOff className="w-4 h-4 mr-2" />
                   Leave
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCalendar(true)}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Schedule Calendar
                 </Button>
               </div>
             </div>
@@ -842,7 +842,29 @@ export const VirtualRoom = () => {
         </div>
       </div>
 
-      {/* Notifications */}
+      {/* Google Calendar Modal */}
+      <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Schedule Calendar</DialogTitle>
+          </DialogHeader>
+          <div className="w-full h-[600px]">
+            <iframe
+              src="https://calendar.google.com/calendar/embed?src=your_calendar_id%40group.calendar.google.com&ctz=UTC"
+              style={{ border: 0 }}
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              scrolling="no"
+              title="Google Calendar"
+            ></iframe>
+          </div>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+
       {showNotification && (
         <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
           <div className="flex items-center">
