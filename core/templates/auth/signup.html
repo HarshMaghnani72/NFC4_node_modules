@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sign Up</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background: radial-gradient(circle at center, #0e1a30, #050d1b 80%);
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .background-mandala {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vmin;
+      height: 100vmin;
+      opacity: 0.12;
+      z-index: 0;
+      animation: rotate 80s linear infinite, goldenPulse 6s ease-in-out infinite;
+    }
+
+    .background-mandala circle {
+      fill: none;
+      stroke: #51a7ff;
+      stroke-width: 2;
+    }
+
+    .background-mandala .dots {
+      fill: #ffd95a;
+    }
+
+    .container {
+      z-index: 2;
+      background: rgba(10, 20, 35, 0.93);
+      padding: 40px 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 35px 10px rgba(255, 215, 100, 0.25);
+      max-width: 400px;
+      width: 90vw;
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .book {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 15px;
+      fill: #ffd95a;
+      filter: drop-shadow(0 0 8px #ffe686);
+      animation: glow 3s ease-in-out infinite;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      padding: 12px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+      background: #1d2d47;
+      color: #fff;
+      box-shadow: inset 0 0 8px rgba(255, 223, 90, 0.2);
+    }
+
+    input:focus {
+      box-shadow: 0 0 10px 2px #ffd95a;
+    }
+
+    button {
+      padding: 12px;
+      background: linear-gradient(to right, #ffd95a, #ffc300);
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      color: #1c1c1c;
+      cursor: pointer;
+      box-shadow: 0 0 15px 4px rgba(255, 215, 100, 0.3);
+    }
+
+    button:hover {
+      background-color: #ffdf70;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 18px;
+      color: #ffe686;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    a:hover {
+      color: #ffffff;
+    }
+
+    @keyframes rotate {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    @keyframes glow {
+      0%, 100% { filter: drop-shadow(0 0 8px #ffd95a); }
+      50% { filter: drop-shadow(0 0 16px #fff1a3); }
+    }
+
+    @keyframes goldenPulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 8px #ffe686);
+      }
+      50% {
+        filter: drop-shadow(0 0 25px #ffd95a);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Mandala Background -->
+  <svg class="background-mandala" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="40" />
+    <circle class="dots" cx="50" cy="10" r="3" />
+    <circle class="dots" cx="50" cy="90" r="3" />
+    <circle class="dots" cx="10" cy="50" r="3" />
+    <circle class="dots" cx="90" cy="50" r="3" />
+    <circle class="dots" cx="27" cy="27" r="2" />
+    <circle class="dots" cx="73" cy="27" r="2" />
+    <circle class="dots" cx="27" cy="73" r="2" />
+    <circle class="dots" cx="73" cy="73" r="2" />
+  </svg>
+
+  <!-- Sign Up Box -->
+  <div class="container">
+    <svg class="book" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 8h40v48H12z" />
+      <path d="M12 8l20 16 20-16" fill="#fff" opacity="0.1"/>
+    </svg>
+
+    <h2>Sign Up</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="text" name="username" placeholder="Username" required autocomplete="username">
+      <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
+      <button type="submit">Sign Up</button>
+    </form>
+    <a href="{% url 'login' %}">Already have an account? Login</a>
+  </div>
+</body>
+</html>

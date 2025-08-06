@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Manage Join Requests</title></head>
+<body>
+  <h2>Pending Join Requests</h2>
+  <ul>
+    {% for req in requests %}
+      <li>{{ req.user.username }} wants to join <strong>{{ req.group.name }}</strong>
+        <a href="{% url 'handle_request' req.id 'accept' %}">Accept</a> |
+        <a href="{% url 'handle_request' req.id 'reject' %}">Reject</a>
+      </li>
+    {% empty %}
+      <li>No pending requests.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

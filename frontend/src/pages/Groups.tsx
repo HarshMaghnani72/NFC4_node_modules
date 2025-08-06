@@ -22,7 +22,6 @@ import {
   Eye,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-
 interface Group {
   _id: string;
   name: string;
@@ -37,8 +36,45 @@ interface Group {
   matchScore?: number;
   tags?: string[];
   isMember?: boolean;
+  // Add other properties as needed
 }
 
+function useUserGroups() {
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/group/my-groups", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch groups");
+        }
+
+        const data = await response.json();
+        const formattedGroups = Array.isArray(data)
+          ? data.map((group: Group) => ({ ...group, isMember: false }))
+          : [];
+        setGroups(formattedGroups);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroups();
+  }, []);
+
+  return { groups, loading, error };
+}
+
+const { groups, loading, error } = useUserGroups();
 export const Groups = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [groupName, setGroupName] = useState("");
@@ -47,40 +83,41 @@ export const Groups = () => {
   const [maxMembers, setMaxMembers] = useState("");
   const [learningStyle, setLearningStyle] = useState("");
 
-  function useUserGroups() {
-    const [groups, setGroups] = useState<Group[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+function useUserGroups() {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-      const fetchGroups = async () => {
-        try {
-          const response = await fetch("http://localhost:8000/group/my-groups", {
-            method: "GET",
-            credentials: "include",
-          });
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/group/my-groups", {
+          method: "GET",
+          credentials: "include",
+        });
 
-          if (!response.ok) {
-            throw new Error("Failed to fetch groups");
-          }
-
-          const data = await response.json();
-          const formattedGroups = Array.isArray(data)
-            ? data.map((group: Group) => ({ ...group, isMember: group.isMember || false }))
-            : [];
-          setGroups(formattedGroups);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
+        if (!response.ok) {
+          throw new Error("Failed to fetch groups");
         }
-      };
 
-      fetchGroups();
-    }, []);
+        const data = await response.json();
+        // Ensure data is an array and add isMember if missing
+        const formattedGroups = Array.isArray(data)
+          ? data.map((group) => ({ ...group, isMember: false }))
+          : [];
+        setGroups(formattedGroups);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return { groups, loading, error };
-  }
+    fetchGroups();
+  }, []);
+
+  return { groups, loading, error };
+}
 
   const { groups, loading, error } = useUserGroups();
 
@@ -130,8 +167,8 @@ export const Groups = () => {
 
   const handleJoinGroup = async (groupId) => {
     try {
-      console.log('Attempting to join group with ID:', groupId);
-      const response = await fetch(`http://localhost:8000/group/join`, {
+      console.log('Attempting to join group with ID:', groupId); // Debug log
+      const response = await fetch('http://localhost:8000/group/join', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,6 +186,7 @@ export const Groups = () => {
       console.log("Join request response:", data);
       alert("Join request sent successfully!");
 
+      // Update the group state to reflect the join request
       setGroups((prevGroups) =>
         prevGroups.map((group) =>
           group._id === groupId ? { ...group, isMember: true } : group
@@ -160,10 +198,9 @@ export const Groups = () => {
     }
   };
 
-  // Update mock data to include your real group ID
   const recommendedGroups = [
     {
-      _id: "68923507e60bba591b9ff908", // Your real group ID
+      _id: "507f1f77bcf86cd799439011", // Mock ObjectId
       name: "Linear Algebra Warriors",
       subject: "Mathematics",
       description: "Conquering matrices and vector spaces together.",
@@ -182,7 +219,7 @@ export const Groups = () => {
   const allGroups = [
     ...recommendedGroups,
     {
-      _id: "507f1f77bcf86cd799439012",
+      _id: "507f1f77bcf86cd799439012", // Mock ObjectId
       name: "Spanish Conversation Club",
       subject: "Languages",
       description: "Practice Spanish conversation in a supportive environment.",

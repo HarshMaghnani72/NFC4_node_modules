@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit Group: {{ group.name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #0d0d0d;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 50px 20px;
+    }
+
+    .gradient-overlay, .stars, .center-glow {
+      position: fixed;
+      inset: 0;
+      z-index: -5;
+      pointer-events: none;
+    }
+
+    .gradient-overlay {
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(122,94,248,0.03));
+    }
+
+    .stars {
+      background-image: radial-gradient(#ffffff22 0.5px, transparent 0.5px);
+      background-size: 20px 20px;
+      opacity: 0.05;
+    }
+
+    .center-glow::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1000px;
+      height: 1000px;
+      background: radial-gradient(circle, rgba(122, 94, 248, 0.3), rgba(122, 94, 248, 0.1), transparent 70%);
+      transform: translate(-50%, -50%);
+      filter: blur(80px);
+      animation: pulseGlow 6s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.85; }
+    }
+
+    .edit-container {
+      background: rgba(20, 20, 20, 0.25);
+      border: 1px solid rgba(122, 94, 248, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 0 40px rgba(122, 94, 248, 0.15);
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      margin-bottom: 30px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin: 20px 0 10px;
+      font-weight: 600;
+      color: #bbb;
+    }
+
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px;
+      background: rgba(40, 40, 40, 0.9);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 1rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border: 1px solid #7a5ef8;
+      box-shadow: 0 0 5px #7a5ef877;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 30px;
+      padding: 12px;
+      background: linear-gradient(145deg, #7a5ef8, #9f7bff);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+      box-shadow: 0 0 20px #7a5ef866;
+    }
+
+    button:hover {
+      transform: scale(1.02);
+      background: linear-gradient(145deg, #9f7bff, #bfa1ff);
+      box-shadow: 0 0 25px #9f7bff88;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      color: #7a5ef8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="gradient-overlay"></div>
+<div class="stars"></div>
+<div class="center-glow"></div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="edit-container">
+    <h2>Edit Group: {{ group.name }}</h2>
+    {{ form.as_p }}
+    <button type="submit">Save Changes</button>
+    <a href="{% url 'admin_groups' %}" class="back-link">← Back to Admin Groups</a>
+  </div>
+</form>
+
+</body>
+</html>

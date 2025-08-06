@@ -1,29 +1,40 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Calendar,
-  CheckSquare,
-  Trophy,
-  Clock,
   Video,
   VideoOff,
   Mic,
   MicOff,
   ScreenShare,
+<<<<<<< HEAD
   StopCircle,
   Play,
   Pause,
   RotateCcw,
+=======
+  Users,
+  MessageCircle,
+  Upload,
+  Download,
+  Play,
+  Pause,
+  RotateCcw,
+  Settings,
+  Maximize,
+  Minimize,
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
   Send,
   PenTool,
   Eraser,
   Square,
   Circle,
   Type,
+<<<<<<< HEAD
   Users,
   Wifi,
   PhoneOff,
@@ -36,6 +47,10 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+=======
+} from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
 
 const Navbar = () => (
   <div className="bg-card border-b p-4">
@@ -44,6 +59,7 @@ const Navbar = () => (
 );
 
 export const VirtualRoom = () => {
+<<<<<<< HEAD
   // Connection and Session State
   const [isConnected, setIsConnected] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState([]);
@@ -61,13 +77,17 @@ export const VirtualRoom = () => {
   const [mediaError, setMediaError] = useState("");
 
   // Timer State
+=======
+  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isAudioOn, setIsAudioOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
   const [timerMinutes, setTimerMinutes] = useState(25);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerType, setTimerType] = useState("pomodoro");
-
-  // Whiteboard State
+  const [message, setMessage] = useState("");
   const [selectedTool, setSelectedTool] = useState("pen");
+<<<<<<< HEAD
   const [penColor, setPenColor] = useState("#000000");
   const [penSize, setPenSize] = useState(2);
   const [eraserSize, setEraserSize] = useState(10);
@@ -88,6 +108,57 @@ export const VirtualRoom = () => {
   const localVideoRef = useRef(null);
   const screenShareVideoRef = useRef(null);
   const socketRef = useRef(null);
+=======
+
+  const participants = [
+    { id: 1, name: "You", avatar: "", isHost: true, video: true, audio: true },
+    {
+      id: 2,
+      name: "Alex Chen",
+      avatar: "",
+      isHost: false,
+      video: true,
+      audio: true,
+    },
+    {
+      id: 3,
+      name: "Sarah Johnson",
+      avatar: "",
+      isHost: false,
+      video: false,
+      audio: true,
+    },
+    {
+      id: 4,
+      name: "Mike Rodriguez",
+      avatar: "",
+      isHost: false,
+      video: true,
+      audio: false,
+    },
+  ];
+
+  const chatMessages = [
+    {
+      id: 1,
+      sender: "Alex Chen",
+      message: "Hey everyone! Ready to tackle these calculus problems?",
+      time: "2:30 PM",
+    },
+    {
+      id: 2,
+      sender: "Sarah Johnson",
+      message: "Absolutely! I have some questions about integration by parts.",
+      time: "2:31 PM",
+    },
+    {
+      id: 3,
+      sender: "Mike Rodriguez",
+      message: "Same here. Let's start with the practice problems.",
+      time: "2:32 PM",
+    },
+  ];
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
 
   const whiteboardTools = [
     { id: "pen", icon: PenTool, name: "Pen" },
@@ -97,6 +168,7 @@ export const VirtualRoom = () => {
     { id: "text", icon: Type, name: "Text" },
   ];
 
+<<<<<<< HEAD
   // Initialize Mock Socket
   useEffect(() => {
     socketRef.current = {
@@ -543,6 +615,11 @@ console.log(`${label} stream`, stream);
   // Timer Functions
   useEffect(() => {
     let interval;
+=======
+  // Pomodoro Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
     if (isTimerRunning && (timerMinutes > 0 || timerSeconds > 0)) {
       interval = setInterval(() => {
         if (timerSeconds > 0) {
@@ -552,23 +629,24 @@ console.log(`${label} stream`, stream);
           setTimerSeconds(59);
         }
       }, 1000);
+<<<<<<< HEAD
     } else if (timerMinutes === 0 && timerSeconds === 0 && isTimerRunning) {
+=======
+    } else if (timerMinutes === 0 && timerSeconds === 0) {
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
       setIsTimerRunning(false);
-      setXpPoints((prev) => prev + 10);
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 3000);
+      // Timer finished - could show notification
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timerMinutes, timerSeconds]);
 
   const resetTimer = () => {
-    setTimerMinutes(
-      timerType === "pomodoro" ? 25 : timerType === "break" ? 5 : 15
-    );
+    setTimerMinutes(25);
     setTimerSeconds(0);
     setIsTimerRunning(false);
   };
 
+<<<<<<< HEAD
   // Todo Functions
   const addTodo = () => {
     if (todoInput.trim()) {
@@ -646,9 +724,12 @@ console.log(`${label} stream`, stream);
     );
   }
 
+=======
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
       <div className="flex h-[calc(100vh-80px)]">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
@@ -657,26 +738,21 @@ console.log(`${label} stream`, stream);
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-foreground">
-                  Virtual Study Session
+                  Advanced Calculus Study Session
                 </h1>
                 <Badge
                   variant="outline"
                   className="bg-green-100 text-green-700 border-green-200"
                 >
-                  <Wifi className="w-3 h-3 mr-1" />
-                  Connected
+                  Live
                 </Badge>
-                <Badge variant="secondary">
-                  <Users className="w-3 h-3 mr-1" />
-                  {connectedUsers.length} Users
-                </Badge>
-                <Badge variant="outline">Room: {sessionId.slice(-6)}</Badge>
               </div>
+
               <div className="flex items-center gap-2">
                 <Button
                   variant={isVideoOn ? "default" : "destructive"}
                   size="icon"
-                  onClick={toggleVideo}
+                  onClick={() => setIsVideoOn(!isVideoOn)}
                 >
                   {isVideoOn ? (
                     <Video className="w-4 h-4" />
@@ -684,10 +760,11 @@ console.log(`${label} stream`, stream);
                     <VideoOff className="w-4 h-4" />
                   )}
                 </Button>
+
                 <Button
                   variant={isAudioOn ? "default" : "destructive"}
                   size="icon"
-                  onClick={toggleAudio}
+                  onClick={() => setIsAudioOn(!isAudioOn)}
                 >
                   {isAudioOn ? (
                     <Mic className="w-4 h-4" />
@@ -695,34 +772,18 @@ console.log(`${label} stream`, stream);
                     <MicOff className="w-4 h-4" />
                   )}
                 </Button>
+
                 <Button
                   variant={isScreenSharing ? "secondary" : "outline"}
                   size="sm"
-                  onClick={toggleScreenShare}
+                  onClick={() => setIsScreenSharing(!isScreenSharing)}
                 >
-                  {isScreenSharing ? (
-                    <>
-                      <StopCircle className="w-4 h-4 mr-2" />
-                      Stop Share
-                    </>
-                  ) : (
-                    <>
-                      <ScreenShare className="w-4 h-4 mr-2" />
-                      Share Screen
-                    </>
-                  )}
+                  <ScreenShare className="w-4 h-4 mr-2" />
+                  {isScreenSharing ? "Stop Sharing" : "Share Screen"}
                 </Button>
-                <Button variant="destructive" size="sm" onClick={leaveSession}>
-                  <PhoneOff className="w-4 h-4 mr-2" />
-                  Leave
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCalendar(true)}
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Schedule Calendar
+
+                <Button variant="outline" size="icon">
+                  <Settings className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -734,6 +795,7 @@ console.log(`${label} stream`, stream);
             )}
           </div>
 
+<<<<<<< HEAD
           {/* Video Grid */}
           <div className="bg-gray-900 p-4">
             <div className="grid grid-cols-2 gap-4 h-48">
@@ -802,11 +864,16 @@ console.log(`${label} stream`, stream);
 
           {/* Whiteboard Area */}
           <div className="flex-1 flex">
+=======
+          {/* Video Grid and Whiteboard */}
+          <div className="flex-1 flex">
+            {/* Whiteboard Area */}
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
             <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 border-r">
               {/* Whiteboard Toolbar */}
               <div className="border-b bg-card/80 backdrop-blur-sm p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-muted-foreground mr-3">
                       Tools:
                     </span>
@@ -821,37 +888,8 @@ console.log(`${label} stream`, stream);
                         <tool.icon className="w-4 h-4" />
                       </Button>
                     ))}
-                    <div className="flex items-center gap-2 border rounded p-1">
-                      <input
-                        type="color"
-                        value={penColor}
-                        onChange={(e) => setPenColor(e.target.value)}
-                        className="w-6 h-6 rounded cursor-pointer"
-                      />
-                    </div>
-                    {selectedTool !== "eraser" && (
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={penSize}
-                        onChange={(e) => setPenSize(parseInt(e.target.value))}
-                        className="w-20"
-                      />
-                    )}
-                    {selectedTool === "eraser" && (
-                      <input
-                        type="range"
-                        min="5"
-                        max="50"
-                        value={eraserSize}
-                        onChange={(e) =>
-                          setEraserSize(parseInt(e.target.value))
-                        }
-                        className="w-20"
-                      />
-                    )}
                   </div>
+<<<<<<< HEAD
                   <Button
                     variant="outline"
                     size="sm"
@@ -868,19 +906,89 @@ console.log(`${label} stream`, stream);
                   >
                     Clear
                   </Button>
+=======
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      Clear
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Maximize className="w-4 h-4" />
+                    </Button>
+                  </div>
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
                 </div>
               </div>
 
-              {/* Canvas */}
-              <div className="flex-1 bg-white dark:bg-gray-950 relative">
+              {/* Whiteboard Canvas */}
+              <div className="flex-1 bg-white dark:bg-gray-950 flex items-center justify-center relative">
+                <div className="text-center text-muted-foreground">
+                  <PenTool className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Interactive Whiteboard</p>
+                  <p className="text-sm">
+                    Click and drag to draw • Use tools above
+                  </p>
+                </div>
+
+                {/* Placeholder for actual whiteboard canvas */}
                 <canvas
-                  ref={canvasRef}
                   className="absolute inset-0 w-full h-full cursor-crosshair"
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
+                  style={{ touchAction: "none" }}
                 />
+              </div>
+            </div>
+
+            {/* Video Grid */}
+            <div className="w-80 bg-card/30 p-4">
+              <div className="grid grid-cols-1 gap-3">
+                {participants.map((participant) => (
+                  <Card
+                    key={participant.id}
+                    className="relative overflow-hidden"
+                  >
+                    <CardContent className="p-0">
+                      <div className="aspect-video bg-gray-900 flex items-center justify-center relative">
+                        {participant.video ? (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                            <Avatar className="w-16 h-16">
+                              <AvatarImage src={participant.avatar} />
+                              <AvatarFallback>
+                                {participant.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            <VideoOff className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                          <Badge variant="secondary" className="text-xs">
+                            {participant.name}
+                            {participant.isHost && " (Host)"}
+                          </Badge>
+
+                          <div className="flex items-center gap-1">
+                            {!participant.audio && (
+                              <MicOff className="w-3 h-3 text-red-500" />
+                            )}
+                            {!participant.video && (
+                              <VideoOff className="w-3 h-3 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
           </div>
@@ -888,49 +996,25 @@ console.log(`${label} stream`, stream);
 
         {/* Right Sidebar */}
         <div className="w-80 border-l bg-card/30 flex flex-col">
-          {/* Connected Users */}
-          <Card className="m-4 mb-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Users className="w-4 h-4 mr-2" />
-                Connected Users ({connectedUsers.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {connectedUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span>{user.name}</span>
-                  {user.isHost && (
-                    <Badge variant="secondary" className="text-xs">
-                      Host
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Timer */}
-          <Card className="m-4 mb-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Clock className="w-4 h-4 mr-2" />
+          {/* Pomodoro Timer */}
+          <Card className="m-4 mb-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-2" />
                 Focus Timer
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">
+                <div className="text-3xl font-bold text-foreground">
                   {String(timerMinutes).padStart(2, "0")}:
                   {String(timerSeconds).padStart(2, "0")}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {timerType === "pomodoro" ? "Focus Session" : "Break Time"}
+                <p className="text-sm text-muted-foreground">
+                  Pomodoro Session
                 </p>
               </div>
+
               <div className="flex justify-center gap-2">
                 <Button
                   variant={isTimerRunning ? "destructive" : "default"}
@@ -938,94 +1022,106 @@ console.log(`${label} stream`, stream);
                   onClick={() => setIsTimerRunning(!isTimerRunning)}
                 >
                   {isTimerRunning ? (
-                    <Pause className="w-3 h-3" />
+                    <Pause className="w-4 h-4" />
                   ) : (
-                    <Play className="w-3 h-3" />
+                    <Play className="w-4 h-4" />
                   )}
                 </Button>
                 <Button variant="outline" size="sm" onClick={resetTimer}>
-                  <RotateCcw className="w-3 h-3" />
+                  <RotateCcw className="w-4 h-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Shared Todo */}
-          <Card className="m-4 mb-2 flex-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <CheckSquare className="w-4 h-4 mr-2" />
-                Shared Tasks
+          {/* Participants */}
+          <Card className="m-4 mb-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                Participants ({participants.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 mb-3">
-                <Input
-                  placeholder="Add task..."
-                  value={todoInput}
-                  onChange={(e) => setTodoInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && addTodo()}
-                  className="text-sm h-8"
-                />
-                <Button size="sm" onClick={addTodo}>
-                  <Send className="w-3 h-3" />
-                </Button>
-              </div>
-              <ScrollArea className="h-32">
-                {todos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className="flex items-center gap-2 mb-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => toggleTodo(todo.id)}
-                    />
-                    <span
-                      className={
-                        todo.completed
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }
-                    >
-                      {todo.text}
-                    </span>
+              <div className="space-y-2">
+                {participants.map((participant) => (
+                  <div key={participant.id} className="flex items-center gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={participant.avatar} />
+                      <AvatarFallback className="text-xs">
+                        {participant.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 text-sm">{participant.name}</span>
+                    {participant.isHost && (
+                      <Badge variant="outline" className="text-xs">
+                        Host
+                      </Badge>
+                    )}
                   </div>
                 ))}
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
 
           {/* Chat */}
-          <Card className="m-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Quick Chat</CardTitle>
+          <Card className="m-4 flex-1 flex flex-col min-h-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <MessageCircle className="w-5 h-5 mr-2" />
+                Group Chat
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-24 mb-2 border rounded p-2">
-                {chatMessages.map((msg) => (
-                  <div key={msg.id} className="text-xs mb-1">
-                    <span className="font-medium">{msg.user}:</span> {msg.text}
-                  </div>
-                ))}
+            <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+              <ScrollArea className="flex-1 px-4">
+                <div className="space-y-3">
+                  {chatMessages.map((msg) => (
+                    <div key={msg.id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {msg.sender}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {msg.time}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {msg.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </ScrollArea>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type message..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && sendChatMessage()}
-                  className="text-sm h-8"
-                />
-                <Button size="sm" onClick={sendChatMessage}>
-                  <Send className="w-3 h-3" />
-                </Button>
+
+              <div className="p-4 border-t">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type a message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && setMessage("")}
+                    className="flex-1"
+                  />
+                  <Button size="icon" onClick={() => setMessage("")}>
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex gap-2 mt-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Upload className="w-4 h-4 mr-1" />
+                    Share File
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+<<<<<<< HEAD
 
       {/* Google Calendar Modal */}
       <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
@@ -1054,6 +1150,8 @@ console.log(`${label} stream`, stream);
           </div>
         </div>
       )}
+=======
+>>>>>>> 55111e80bdceba71110484c762f545d0078cc07e
     </div>
   );
 };

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Create Your Profile</h2>
+    <form id="registerForm">
+      <input type="text" placeholder="Full Name" required>
+      <input type="email" placeholder="Email Address" required>
+      <input type="password" placeholder="Password" required>
+
+      <label>Select Courses:</label>
+      <select >
+        <option>B.Sc Mathematics</option>
+        <option>B.Sc Physics</option>
+        <option>B.Tech Computer Science</option>
+        <option>B.Tech Electronic Communication</option>
+        <option>B.Tech Information Technology</option>
+        <option>Data Structure</option>
+        <option>B.Sc Computer Science</option>
+        <option>Psychology</option>
+        <option>B.Sc Chemistry</option>
+        <option>BA English Literature</option>
+        <option>BA Malayalam Literature</option>
+        <option>BA Hindi Literature</option>
+      </select>
+
+      <label>Study Preference:</label>
+      <select required>
+        <option value="online">Online</option>
+        <option value="offline">Offline</option>
+        <option value="either">Either</option>
+      </select>
+
+      <label>Available Time Slots:</label>
+      <div class="checkbox-group">
+        <label><input type="checkbox"> Morning</label>
+        <label><input type="checkbox"> Afternoon</label>
+        <label><input type="checkbox"> Evening</label>
+      </div>
+
+      <button type="submit">Register</button>
+    </form>
+  </div>
+</body>
+</html>
