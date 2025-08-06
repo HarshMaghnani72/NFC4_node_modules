@@ -39,10 +39,13 @@ export const Groups = () => {
     useEffect(() => {
       const fetchGroups = async () => {
         try {
-          const response = await fetch("http://localhost:8000/group/my-groups", {
-            method: "GET",
-            credentials: "include",
-          });
+          const response = await fetch(
+            "http://localhost:8000/group/my-groups",
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
 
           if (!response.ok) {
             throw new Error("Failed to fetch groups");
@@ -66,7 +69,13 @@ export const Groups = () => {
   const { groups, loading, error } = useUserGroups();
 
   const handleCreateGroup = async () => {
-    if (!groupName || !subject || !description || !maxMembers || !learningStyle) {
+    if (
+      !groupName ||
+      !subject ||
+      !description ||
+      !maxMembers ||
+      !learningStyle
+    ) {
       alert("Please fill out all required fields.");
       return;
     }
@@ -189,7 +198,9 @@ export const Groups = () => {
               )}
             </div>
             <Badge variant="secondary" className="mb-2">
-              {Array.isArray(group.subjects) ? group.subjects.join(", ") || "No subjects" : group.subject}
+              {Array.isArray(group.subjects)
+                ? group.subjects.join(", ") || "No subjects"
+                : group.subject}
             </Badge>
             <p className="text-muted-foreground text-sm mb-3">
               {group.description}
